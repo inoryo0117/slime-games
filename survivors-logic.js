@@ -57,8 +57,8 @@ const BOSS_MINION_R_RANGE = 20;
    むずかしい＝全係数1.0＝この日より前のバランスそのもの（クリア到達0/16）。
    pdmg = プレイヤーの与ダメージ倍率（applyDamage で一括して掛ける）。 */
 export const DIFFS = {
-  easy:   { key: 'easy',   name: 'やさしい',   ehp: 0.35, dens: 0.60, edmg: 0.45, xp: 2.0, pdmg: 2.2, tag: 'クリアできる' },
-  normal: { key: 'normal', name: 'ふつう',     ehp: 0.55, dens: 0.75, edmg: 0.60, xp: 1.6, pdmg: 1.8, tag: 'ちょうどいい' },
+  easy:   { key: 'easy',   name: 'やさしい',   ehp: 0.65, dens: 0.80, edmg: 0.90, xp: 2.0, pdmg: 1.95, tag: 'クリアできる' },
+  normal: { key: 'normal', name: 'ふつう',     ehp: 0.70, dens: 0.85, edmg: 0.70, xp: 1.6, pdmg: 1.8, tag: 'ちょうどいい' },
   hard:   { key: 'hard',   name: 'むずかしい', ehp: 1.00, dens: 1.00, edmg: 1.00, xp: 1.0, pdmg: 1.0, tag: 'これまでのバランス' },
 };
 export const DIFF_ORDER = ['easy', 'normal', 'hard'];
