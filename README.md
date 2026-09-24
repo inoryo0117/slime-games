@@ -24,4 +24,4 @@ Free, bite-sized browser games. No download, no sign-up — they run right in yo
 
 ## 画像素材
 
-`assets/kenney_tower-defense-top-down/` は [Kenney](https://kenney.nl/assets/tower-defense-top-down) の Tower Defense (top-down) Pack（CC0）です。同梱の `License.txt` を参照してください。`chibi-sprites.png`（ちびキャラの絵）は画像生成AIで描かせたものをドット単位で整えたものです（正面の2コマだけは手描き）。それ以外のグラフィックはすべてコードで描いています。
+`assets/kenney_tower-defense-top-down/` は [Kenney](https://kenney.nl/assets/tower-defense-top-down) の Tower Defense (top-down) Pack（CC0）です。同梱の `License.txt` を参照してください。`chibi-sprites.png`（ちびキャラの絵）は画像生成AIで描かせたものをドット単位で整えたものです（正面の足元だけは手描き）。それ以外のグラフィックはすべてコードで描いています。
