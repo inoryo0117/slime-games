@@ -134,8 +134,118 @@ window.__spritesReady = false;
 spriteImg.onload = () => { window.__spritesReady = true; };
 spriteImg.src = './chibi-sprites.png';
 const SPRITE_CELL = 40; // 元素材の1セルのドット数
-const SPRITE_HURT_COL = 2; // 被弾時の絵（列0・1は歩き2コマ）
+// 2026-09-25 画像生成のドット絵シートに差し替えて列の意味が変わった：
+// 列0=待機 列1=歩き 列2=攻撃 列3=被弾（旧シートは列0/1=歩き2コマ・列2=被弾だった）
+const SPRITE_IDLE_COL = 0;
+const SPRITE_WALK_COL = 1;
+const SPRITE_ATTACK_COL = 2;
+const SPRITE_HURT_COL = 3;
 const SPRITE_DRAW = 80; // 描画サイズ（1ドット=論理2px固定・拡大率は可変にしない）
+const ATTACK_HOLD = 0.15; // しゃぼんを撃ってから攻撃コマを見せる秒数
+
+/* =========================================================================
+   敵スプライト（2026-09-25・画像生成のドット絵シートから切り出し）。
+   chibi-enemies.png 1枚＋下のJS定数。座標はそのシート内のpx。
+   低解像度レイヤー(1ドット=論理2px)に drawCreature と同じ流儀で直接描くため、
+   drawImage の destのw/hは「シートpx×2」（＝lowCtxのsetTransform(0.5,..)で戻る）。
+   画像読み込み前は従来の drawCreature を保険として残す（__enemySpritesReady）。
+   ========================================================================= */
+const enemySpriteImg = new Image();
+window.__enemySpritesReady = false;
+enemySpriteImg.onload = () => { window.__enemySpritesReady = true; };
+enemySpriteImg.src = './chibi-enemies.png';
+// 2026-09-25 切り出しスクリプトが出力した座標。
+// シート本体は chibi-enemies.png。座標はそのシート内のpx、ax/ayは描画アンカー（下端中央）
+// だが実際の描画では見た目をdrawCreatureに揃えるため中心(w/2,h/2)を使う。
+const ENEMY_SHEET_W = 745, ENEMY_SHEET_H = 198;
+const ENEMY_SPRITES = {
+  poyo: {
+    idle: [{x:0,y:3,w:16,h:13,ax:8.0,ay:13.0},{x:18,y:3,w:16,h:13,ax:8.0,ay:13.0},{x:36,y:2,w:16,h:14,ax:8.0,ay:14.0},{x:54,y:2,w:16,h:14,ax:8.0,ay:14.0},{x:72,y:2,w:16,h:14,ax:8.0,ay:14.0},{x:90,y:1,w:16,h:15,ax:8.0,ay:15.0},{x:108,y:1,w:16,h:15,ax:8.0,ay:15.0}],
+    hit: [{x:126,y:2,w:16,h:14,ax:8.0,ay:14.0}],
+    squish: [{x:144,y:7,w:19,h:9,ax:9.5,ay:9.0}],
+    die: [{x:165,y:0,w:20,h:16,ax:10.0,ay:16.0}],
+  },
+  tsubu: {
+    idle: [{x:0,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:18,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:36,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:54,y:18,w:15,h:17,ax:7.5,ay:17.0},{x:71,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:89,y:19,w:16,h:16,ax:8.0,ay:16.0},{x:107,y:19,w:16,h:16,ax:8.0,ay:16.0}],
+    hit: [{x:125,y:19,w:16,h:16,ax:8.0,ay:16.0}],
+    squish: [{x:143,y:19,w:16,h:16,ax:8.0,ay:16.0}],
+    die: [{x:161,y:26,w:14,h:9,ax:7.0,ay:9.0}],
+  },
+  hane: {
+    idle: [{x:0,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:17,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:34,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:51,y:37,w:15,h:14,ax:7.5,ay:14.0},{x:68,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:85,y:37,w:15,h:14,ax:7.5,ay:14.0},{x:102,y:38,w:15,h:13,ax:7.5,ay:13.0}],
+    hit: [{x:119,y:38,w:15,h:13,ax:7.5,ay:13.0}],
+    squish: [{x:136,y:38,w:16,h:13,ax:8.0,ay:13.0}],
+    die: [{x:154,y:43,w:17,h:8,ax:8.5,ay:8.0}],
+  },
+  mochi: {
+    idle: [{x:0,y:53,w:23,h:23,ax:11.5,ay:23.0},{x:25,y:53,w:23,h:23,ax:11.5,ay:23.0},{x:50,y:53,w:23,h:23,ax:11.5,ay:23.0}],
+    action: [{x:75,y:56,w:23,h:20,ax:11.5,ay:20.0},{x:100,y:53,w:23,h:23,ax:11.5,ay:23.0},{x:125,y:55,w:23,h:21,ax:11.5,ay:21.0},{x:150,y:56,w:23,h:20,ax:11.5,ay:20.0},{x:175,y:60,w:23,h:16,ax:11.5,ay:16.0},{x:200,y:56,w:23,h:20,ax:11.5,ay:20.0}],
+    die: [{x:225,y:60,w:23,h:16,ax:11.5,ay:16.0}],
+  },
+  boss: {
+    idle: [{x:0,y:146,w:53,h:50,ax:26.5,ay:50.0},{x:55,y:146,w:52,h:50,ax:26.0,ay:50.0}],
+    lookL: [{x:109,y:146,w:52,h:50,ax:26.0,ay:50.0}],
+    lookR: [{x:163,y:145,w:52,h:51,ax:26.0,ay:51.0}],
+    hit: [{x:217,y:144,w:53,h:52,ax:26.5,ay:52.0}],
+    crawl: [{x:272,y:162,w:57,h:34,ax:28.5,ay:34.0},{x:331,y:159,w:57,h:37,ax:28.5,ay:37.0}],
+    fire: [{x:390,y:104,w:57,h:92,ax:28.5,ay:92.0},{x:449,y:110,w:57,h:86,ax:28.5,ay:86.0}],
+    angry: [{x:508,y:144,w:57,h:52,ax:28.5,ay:52.0}],
+    boom: [{x:567,y:78,w:57,h:118,ax:28.5,ay:118.0},{x:626,y:80,w:57,h:116,ax:28.5,ay:116.0},{x:685,y:144,w:58,h:52,ax:29.0,ay:52.0}],
+  },
+};
+
+// 敵1コマを中心そろえで描く。px=シートpx1個を何論理pxで出すか
+// （drawEnemy等・lowCtx世界は setTransform(0.5,..) で半分に戻るので px=2 が「シートpxそのまま」。
+//  drawTitle/drawLevelupはmainCtx直描きなので px を大きくして見やすくする）。
+// flipX=trueで左右反転（進行方向むけの一部コマ専用）。
+function drawEnemySpriteScaled(frame, cx, cy, px, flipX) {
+  if (!frame) return;
+  const dw = frame.w * px, dh = frame.h * px;
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (flipX) ctx.scale(-1, 1);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(enemySpriteImg, frame.x, frame.y, frame.w, frame.h, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+function drawEnemySprite(frame, wx, wy, flipX) { drawEnemySpriteScaled(frame, wx, wy, 2, flipX); }
+
+// hashFrac(entId*k) を位相にしたコマ送り（既存の呼吸アニメと同じ流儀）。fps=1秒に何コマ進むか。
+function loopFrame(frames, entId, fps) {
+  if (!frames || frames.length === 0) return null;
+  const phase = hashFrac(entId * 7.13);
+  const idx = Math.floor(clock * fps + phase * frames.length) % frames.length;
+  return frames[(idx + frames.length) % frames.length];
+}
+
+// 死亡演出：潰れ→死亡コマを約0.35秒（ボスは爆散パーティクル系で約1.2秒）再生する。
+// pop イベント（enemyType付き）に載せてfxListで再生する。戻り値trueの間は生かし続ける。
+const DEATH_DUR_MINION = 0.35;
+const DEATH_DUR_BOSS = 1.2;
+function drawEnemyDeath(enemyType, x, y, t) {
+  if (!window.__enemySpritesReady) return false;
+  const sp = ENEMY_SPRITES[spriteSpecies(enemyType)];
+  if (!sp) return false;
+  if (enemyType === 'oyamochi') {
+    if (t >= DEATH_DUR_BOSS) return false;
+    const idx = Math.min(sp.boom.length - 1, Math.floor(t / (DEATH_DUR_BOSS / sp.boom.length)));
+    drawEnemySprite(sp.boom[idx], x, y, false);
+    return true;
+  }
+  if (t >= DEATH_DUR_MINION) return false;
+  const frame = t < DEATH_DUR_MINION * 0.45 ? (sp.squish ? sp.squish[0] : sp.idle[0]) : (sp.die ? sp.die[0] : sp.idle[0]);
+  drawEnemySprite(frame, x, y, false);
+  return true;
+}
+
+// 'pop' はスプライトの死亡演出と既存の輪・星・ハートの演出を両方鳴らす。
+// どちらか長く生きている方に合わせてfxを残す。
+function drawFxCombined(fx, x, y, t) {
+  const sparkleAlive = drawFX(fx.name, x, y, t);
+  let spriteAlive = false;
+  if (fx.name === 'pop' && fx.enemyType) spriteAlive = drawEnemyDeath(fx.enemyType, x, y, t);
+  return sparkleAlive || spriteAlive;
+}
 // スプライトの行 = atan2(vy, vx) を45度ずつに割ったセクタ番号。
 // 0=右 1=右下 2=下 3=左下 4=左 5=左上 6=上 7=右上（右上は gen_sheet4.py の生成絵、左上はその左右反転）。
 let playerFacingRow = 2; // 開始時は正面を向かせる
@@ -190,22 +300,24 @@ function drawFX(name, x, y, t) {
     ctx.fillStyle = '#fff7cf';
     ctx.beginPath(); ctx.arc(x, y, 3 + p * 7, 0, Math.PI * 2); ctx.fill();
   } else if (name === 'pop') {
+    // 2026-09-25: 敵スプライトの死亡コマ（潰れ→死亡／ボスは爆散）が同時に鳴るようになった
+    // ため、この輪・星・ハートは「添える程度」に弱める（元は0.7/0.95/1.0だった）。
     // 輪が広がる
-    ctx.globalAlpha = (1 - p) * 0.7;
+    ctx.globalAlpha = (1 - p) * 0.4;
     ctx.strokeStyle = '#ffe3f2';
-    ctx.lineWidth = 4 * (1 - p) + 1;
+    ctx.lineWidth = 3 * (1 - p) + 1;
     ctx.beginPath(); ctx.arc(x, y, 6 + p * 34, 0, Math.PI * 2); ctx.stroke();
-    // 星型の粒が6つ散る
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2 + i * 0.4;
-      const dist = p * 30;
+    // 星型の粒が4つ散る
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + i * 0.4;
+      const dist = p * 26;
       const sx = x + Math.cos(a) * dist, sy = y + Math.sin(a) * dist;
-      ctx.globalAlpha = (1 - p) * 0.95;
-      drawStar(sx, sy, 5 * (1 - p * 0.5), '#fff0b8');
+      ctx.globalAlpha = (1 - p) * 0.6;
+      drawStar(sx, sy, 4 * (1 - p * 0.5), '#fff0b8');
     }
     // 小さなハートが1つ、ふわっと浮かぶ
-    ctx.globalAlpha = (1 - p);
-    drawHeart(x, y - p * 22, 7, '#ffc7dd');
+    ctx.globalAlpha = (1 - p) * 0.65;
+    drawHeart(x, y - p * 22, 6, '#ffc7dd');
   } else if (name === 'hurt') {
     // 画面ふちに淡いピンクのにじみが脈打つ（赤フラッシュではなく縁だけの淡いビネット）
     const pulse = 0.5 + 0.5 * Math.sin(p * Math.PI * 3);
@@ -839,7 +951,7 @@ function handleEvents(events) {
       }
     }
     else if (ev.type === 'hit') fxList.push({ name: 'hit', x: ev.x, y: ev.y, t0: clock });
-    else if (ev.type === 'pop') fxList.push({ name: 'pop', x: ev.x, y: ev.y, t0: clock });
+    else if (ev.type === 'pop') fxList.push({ name: 'pop', x: ev.x, y: ev.y, t0: clock, enemyType: ev.enemyType });
     else if (ev.type === 'hurt') { fxList.push({ name: 'hurt', x: ev.x, y: ev.y, t0: clock }); playerHurtT = 0; }
     else if (ev.type === 'gem') fxList.push({ name: 'gem', x: ev.x, y: ev.y, t0: clock });
     else if (ev.type === 'strike') fxList.push({ name: 'strike', x: ev.x, y: ev.y, t0: clock });
@@ -851,25 +963,85 @@ function handleEvents(events) {
   }
 }
 
+// e.type から ENEMY_SPRITES のキーへ（oyamochiだけ名前が違う）
+function spriteSpecies(type) { return type === 'oyamochi' ? 'boss' : type; }
+
+// 雑魚3種（poyo/tsubu/hane）共通：アイドルループ＋被弾コマ
+function pickMinionFrame(e, sp) {
+  if (e.hitFlash > 0 && sp.hit) return sp.hit[0];
+  return loopFrame(sp.idle, e.id, 2.4);
+}
+
+// もち：距離で「穏やか/怒り顔の行動」を切り替える
+const MOCHI_ANGRY_DIST = 140;
+function pickMochiFrame(e, sp, dist) {
+  if (dist <= MOCHI_ANGRY_DIST) return loopFrame(sp.action, e.id, 4);
+  return loopFrame(sp.idle, e.id, 1.8);
+}
+
+// ボス：被弾＞召喚直前の火柱＞召喚直後の怒り顔＞（通常サイクル：待機/目線⇄前進の突進）
+function pickBossFrame(e, sp, dxToPlayer) {
+  if (e.hitFlash > 0 && sp.hit) return { frame: sp.hit[0], flip: false };
+  const bt = e._bossTimer || 0;
+  if (bt >= 3.5) {
+    // 残り0.5秒＝ぽよ3体を呼ぶ直前。火柱を焚いて予告する
+    return { frame: loopFrame(sp.fire, e.id, 7), flip: false };
+  }
+  if (bt < 0.4) {
+    // 呼んだ直後0.4秒は怒り顔のまま
+    return { frame: sp.angry[0], flip: false };
+  }
+  // 通常サイクル：0.65秒ごとに「待機/目線」⇔「前進の突進」を繰り返す
+  // （ロジック側は常に自機へ向かって進み続けるため、速度での切替は事実上常にtrueになり
+  //   意味を持たない。時間で区切って「呼吸→突進」のメリハリを出す設計に振った）。
+  const period = 1.3, phase = hashFrac(e.id * 3.31) * period;
+  const t = (clock + phase) % period;
+  const flip = dxToPlayer < 0;
+  if (t < 0.85) {
+    if (Math.abs(dxToPlayer) > 24) {
+      return { frame: dxToPlayer < 0 ? sp.lookL[0] : sp.lookR[0], flip: false };
+    }
+    return { frame: loopFrame(sp.idle, e.id, 1.5), flip: false };
+  }
+  return { frame: loopFrame(sp.crawl, e.id, 5), flip };
+}
+
 function drawEnemy(e, cam) {
   const anim = creatureAnim('e' + e.id, e.x, e.y,
     (e.x - (entPrev.get('e' + e.id)?.x ?? e.x)) / Math.max(dtRef, 1 / 240),
     (e.y - (entPrev.get('e' + e.id)?.y ?? e.y)) / Math.max(dtRef, 1 / 240));
   const col = ENEMY_COLOR[e.type] || ENEMY_COLOR.poyo;
-  drawCreature(e.x - cam.x, e.y - cam.y, e.r, anim, col.main, col.shade, e.type === 'oyamochi' ? 0.28 : 0.36);
+  const sp = window.__enemySpritesReady ? ENEMY_SPRITES[spriteSpecies(e.type)] : null;
+  const sx = e.x - cam.x, sy = e.y - cam.y;
+  if (sp) {
+    ctx.imageSmoothingEnabled = false;
+    if (e.type === 'oyamochi') {
+      const dxToPlayer = game.player.x - e.x;
+      const { frame, flip } = pickBossFrame(e, sp, dxToPlayer);
+      drawEnemySprite(frame, sx, sy, flip);
+    } else if (e.type === 'mochi') {
+      const dist = Math.hypot(game.player.x - e.x, game.player.y - e.y);
+      drawEnemySprite(pickMochiFrame(e, sp, dist), sx, sy, false);
+    } else {
+      drawEnemySprite(pickMinionFrame(e, sp), sx, sy, false);
+    }
+  } else {
+    // 画像読み込み前の保険：従来の丸ベース描画
+    drawCreature(sx, sy, e.r, anim, col.main, col.shade, e.type === 'oyamochi' ? 0.28 : 0.36);
+  }
   if (e.hitFlash > 0) {
-    // 被弾は赤くせず、白いきらめきを一瞬重ねる
+    // 被弾は赤くせず、白いきらめきを一瞬重ねる（スプライト版でも共通の演出として残す）
     ctx.save();
-    ctx.globalAlpha = e.hitFlash / 0.12 * 0.55;
+    ctx.globalAlpha = e.hitFlash / 0.12 * 0.4;
     ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(e.x - cam.x, e.y - cam.y, e.r * 0.95, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, sy, e.r * 0.95, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
   if (e.type === 'oyamochi') {
     // ボスの目印バー（画面上部固定ではなく本体上に小さく）
     const bw = 64, bh = 6;
-    const bx = e.x - cam.x - bw / 2, by = e.y - cam.y - e.r - 16;
+    const bx = sx - bw / 2, by = sy - e.r - 16;
     roundRect(bx, by, bw, bh, 3);
     ctx.fillStyle = 'rgba(120,110,80,.25)'; ctx.fill();
     roundRect(bx, by, bw * Math.max(0, e.hp / e.maxHp), bh, 3);
@@ -997,12 +1169,15 @@ function drawPlayer(cam) {
     playerFacingRow = pickFacingRow(ang, playerFacingRow);
   }
   const moving = speed > 4;
-  const frameCol = moving ? Math.floor(game.t * 6) % 2 : 0;
+  // 2026-09-25: 新シートは「歩き2コマ」ではなく「待機1コマ＋歩き1コマ」なので、
+  // 同じ拍(floor(t*6)%2)で列0(待機)⇔列1(歩き)を交互に出す。
+  let spriteCol = moving ? (Math.floor(game.t * 6) % 2 === 0 ? SPRITE_IDLE_COL : SPRITE_WALK_COL) : SPRITE_IDLE_COL;
+  // しゃぼんを撃った直後ATTACK_HOLD秒は攻撃コマ（'shot'イベント時刻=lastAimTを流用）。
+  if (clock - lastAimT <= ATTACK_HOLD) spriteCol = SPRITE_ATTACK_COL;
 
   // 被弾演出：輪郭明滅の代わりに、スプライトを1フレームおきに描かない（点滅）
-  // 点滅中に見えているコマは、シート列2の「目をつぶった顔」に差し替える
+  // 点滅中に見えているコマは、シート列3の「目をつぶった顔」に差し替える（被弾が最優先）
   let showSprite = true;
-  let spriteCol = frameCol;
   if (playerHurtT < FX_DUR.hurt) {
     showSprite = Math.floor(playerHurtT * 26) % 2 === 0;
     spriteCol = SPRITE_HURT_COL;
@@ -1087,13 +1262,13 @@ function renderScene() {
   const fxAlive = [];
   for (const fx of fxList) {
     if (!FX_UNDER_PLAYER.has(fx.name)) { fxAlive.push(fx); continue; }
-    if (drawFX(fx.name, fx.x - cam.x, fx.y - cam.y, clock - fx.t0)) fxAlive.push(fx);
+    if (drawFxCombined(fx, fx.x - cam.x, fx.y - cam.y, clock - fx.t0)) fxAlive.push(fx);
   }
   drawPlayer(cam);
   // 自機自身の状態演出（levelup / hurt / boss / clear / heal）だけ自機の上
   fxList = fxAlive.filter((fx) => FX_UNDER_PLAYER.has(fx.name)
     ? true
-    : drawFX(fx.name, fx.x - cam.x, fx.y - cam.y, clock - fx.t0));
+    : drawFxCombined(fx, fx.x - cam.x, fx.y - cam.y, clock - fx.t0));
   ctx = mainCtx;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(lowCv, 0, 0, W / 2, H / 2, 0, 0, W, H);
@@ -1143,9 +1318,14 @@ function drawTitle() {
     { x: 104, y: 496, r: 19, key: 'mochi' },
   ];
   for (const d of titleDecor) {
-    const anim = creatureAnim('title-' + d.key + d.x, d.x, d.y, 0, 0);
-    const col = ENEMY_COLOR[d.key];
-    drawCreature(d.x, d.y, d.r, anim, col.main, col.shade, 0.36);
+    if (window.__enemySpritesReady) {
+      const sp = ENEMY_SPRITES[d.key];
+      drawEnemySpriteScaled(loopFrame(sp.idle, d.x * 7 + d.y, 1.6), d.x, d.y, 4, false);
+    } else {
+      const anim = creatureAnim('title-' + d.key + d.x, d.x, d.y, 0, 0);
+      const col = ENEMY_COLOR[d.key];
+      drawCreature(d.x, d.y, d.r, anim, col.main, col.shade, 0.36);
+    }
   }
   // 主人公はゲーム中と同じスプライトの正面（行2）を、1ドット=論理4pxで大きく出す。
   // キャラはセルの12〜39行目にいるので、その中ほど（26行目）が y=430 に来るよう置く。
@@ -1225,8 +1405,20 @@ function drawLevelup() {
   // 空いた上側に自機を1体（2026-09-24 T-2c）。カードが上へ戻ってもHUD（下端98）
   // の裏に潜らないよう下限をクランプする（2026-09-24 再修正）。
   const heroY = cards.length ? Math.max(146, cards[0].y - 150) : H / 2 - 150;
-  const heroAnim = creatureAnim('levelup-hero', W / 2, heroY, 0, 0);
-  drawCreature(W / 2, heroY, 24, heroAnim, COL.player.main, COL.player.shade, 0.4);
+  if (window.__spritesReady) {
+    // 主人公スプライトの正面（行2・列0＝待機コマ）を1ドット=2論理pxで出す
+    // （2026-09-25: drawCreature の丸いスライムから差し替え。当初1.2pxだったのを
+    //  船長指摘で整数の2pxへ）。
+    const dot = 2, size = SPRITE_CELL * dot;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(spriteImg, 0, 2 * SPRITE_CELL, SPRITE_CELL, SPRITE_CELL,
+      Math.round(W / 2 - size / 2), Math.round(heroY - size * 0.62), size, size);
+    ctx.restore();
+  } else {
+    const heroAnim = creatureAnim('levelup-hero', W / 2, heroY, 0, 0);
+    drawCreature(W / 2, heroY, 24, heroAnim, COL.player.main, COL.player.shade, 0.4);
+  }
 
   for (const c of cards) {
     ctx.save();
@@ -1369,6 +1561,7 @@ window.__diag = {
   // 自機の向き（スプライトの行番号 0=右 1=右下 2=下 3=左下 4=左 5=左上 6=上 7=右上）。
   // 斜め入力で向きが往復していないかをヘッドレスで数えるために出している。
   get facing() { return playerFacingRow; },
+  get lastAimT() { return lastAimT; }, // 攻撃コマの受入確認用（2026-09-25）
   setSpeed(v) { speedMul = normalizeSpeed(v); return speedMul; },
   step(n = 1, dt = 1 / 60) {
     if (uiPhase !== 'play') startRun();
