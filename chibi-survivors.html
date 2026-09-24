@@ -31,6 +31,9 @@ import { nextSpeed, normalizeSpeed, advanceFrame } from './chibi-speed-control.j
    固定の論理解像度 W×H に描き、実画面へレターボックスでフィットさせる）
    ========================================================================= */
 const W = 390, H = 844;
+// 起動画面の右下に出すバージョン（更新日・元にした slime-games main のコミット）。
+// ちびキャラは機関室の slime-survivors に無いので、スライム版と違い公開側のコミットを書く
+const VERSION = 'v2026.09.25 (e941f4d)';
 const cv = document.getElementById('cv');
 const mainCtx = cv.getContext('2d');
 let ctx = mainCtx;
@@ -1187,6 +1190,10 @@ function drawTitle() {
   ctx.textBaseline = 'alphabetic';
   ctx.font = '400 11px -apple-system, sans-serif';
   ctx.fillText('オフラインで動きます', W / 2, H - 40);
+
+  ctx.textAlign = 'right';
+  ctx.font = '400 10px -apple-system, sans-serif';
+  ctx.fillText(VERSION, W - 14, H - 14);
 }
 
 function wrapText(text, maxWidth) {
