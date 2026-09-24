@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0e1a24">
+<title>スライムのゲーム置き場</title>
+<meta name="description" content="ダウンロード不要・登録不要。スマホでもPCでも、開いたらすぐ遊べる短時間のブラウザゲーム。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html { min-height:100%; }
+  body {
+    min-height:100vh; background:linear-gradient(170deg,#132033 0%,#0d1a26 55%,#0a1520 100%); background-attachment:fixed;
+    color:#e7f2f8; font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    padding:34px 20px calc(40px + env(safe-area-inset-bottom));
+    -webkit-user-select:none; user-select:none;
+  }
+  h1 { font-size:26px; text-align:center; letter-spacing:.04em; }
+  .sub { text-align:center; color:#7f9db0; font-size:13px; margin:8px 0 6px; }
+  .sub.en { font-size:11.5px; color:#63808f; margin-bottom:28px; }
+  .card {
+    display:block; text-decoration:none; color:inherit;
+    background:rgba(255,255,255,.07); border:1px solid rgba(150,200,230,.18);
+    border-radius:18px; padding:18px 18px 16px; margin:0 auto 16px; max-width:430px;
+    transition:transform .12s ease, background .12s ease;
+  }
+  .card:active { transform:scale(.98); background:rgba(255,255,255,.13); }
+  .row { display:flex; align-items:center; gap:14px; }
+  .emoji { font-size:34px; line-height:1; width:44px; text-align:center; }
+  .name { font-size:19px; font-weight:700; }
+  .desc { color:#9fb9c9; font-size:13px; margin-top:5px; line-height:1.5; }
+  .tag { display:inline-block; margin-top:10px; font-size:11px; color:#0d1a26;
+         background:#7fd4a8; border-radius:99px; padding:3px 10px; font-weight:700; }
+  .tag.b { background:#ffd35f; } .tag.c { background:#ff9ecb; }
+  .foot { text-align:center; color:#5d7686; font-size:11px; margin-top:26px; line-height:1.8; }
+  .foot a { color:#7f9db0; }
+</style>
+</head>
+<body>
+  <h1>スライムのゲーム置き場</h1>
+  <p class="sub">ダウンロードも登録もなし。開いたらすぐ遊べます</p>
+  <p class="sub en">Free browser games. No download, no sign-up — they run right in your browser, on phone or PC.</p>
+
+  <a class="card" href="slime-survivors.html">
+    <div class="row"><div class="emoji">🌼</div><div>
+      <div class="name">スライム・サバイバーズ</div>
+      <div class="desc">見下ろし視点でひたすら逃げまわる自動攻撃サバイバー。ゆび1本で動かすだけ、しゃぼんやわっかが勝手に敵を倒す。8分間生き延びろ。</div>
+      <span class="tag c">8分1ラン</span>
+    </div></div>
+  </a>
+
+  <a class="card" href="slime-tower.html">
+    <div class="row"><div class="emoji">🗼</div><div>
+      <div class="name">スライム防衛隊タワーディフェンス</div>
+      <div class="desc">道の脇のマスをタップしてタワーを建設。侵入する乗り物・戦車・飛行機を迎え撃ち、全4面の防衛をやり遂げろ。</div>
+      <span class="tag">全4ステージ</span>
+    </div></div>
+  </a>
+
+  <a class="card" href="slime-basket.html">
+    <div class="row"><div class="emoji">🟢</div><div>
+      <div class="name">スライム・イン・かご</div>
+      <div class="desc">動くかごに何匹入れられるか。3回落としたら終わり。ベスト更新を狙う短時間版。</div>
+      <span class="tag b">スコアアタック</span>
+    </div></div>
+  </a>
+
+  <p class="foot">
+    ホーム画面に追加すると全画面になります<br>
+    外部通信なし・オフラインでも動きます<br>
+    タワーディフェンスの画像素材は <a href="https://kenney.nl/assets/tower-defense-top-down">Kenney</a>（CC0）
+  </p>
+</body>
+</html>

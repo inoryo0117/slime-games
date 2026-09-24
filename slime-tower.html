@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#12241a">
+<title>スライム防衛隊タワーディフェンス</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+  html, body {
+    height:100%; overflow:hidden; overscroll-behavior:none; touch-action:none;
+    background:#0d1a13; color:#eaf6ee;
+    font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app {
+    display:flex; flex-direction:column; align-items:center;
+    height:100%; width:100%;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  header {
+    width:100%; max-width:420px; padding:8px 12px 6px; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:#0d1a13; position:relative; z-index:2;
+  }
+  header .backlink { font-size:12px; color:#8fd2a6; text-decoration:none; white-space:nowrap; }
+  .hud { display:flex; gap:10px; font-size:14px; font-weight:700; flex-wrap:wrap; justify-content:flex-end; }
+  .hud span.badge {
+    background:rgba(255,255,255,.08); border:1px solid rgba(160,220,180,.25);
+    border-radius:10px; padding:3px 9px; white-space:nowrap;
+  }
+  #stageTitle { width:100%; max-width:420px; text-align:center; font-size:12px; color:#9fcfae; padding:0 10px 4px; flex:0 0 auto; background:#0d1a13; position:relative; z-index:2; }
+  #canvasWrap {
+    position:relative; width:100%; max-width:420px; flex:1 1 auto; min-height:0;
+    display:flex; align-items:center; justify-content:center; touch-action:none;
+    overflow:hidden;
+  }
+  #stage { position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+  canvas { display:block; width:auto; height:auto; max-width:100%; max-height:100%; touch-action:none; image-rendering:pixelated; }
+  #overlay {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(6,14,10,.82); text-align:center; padding:20px; flex-direction:column; gap:14px;
+  }
+  #overlay h2 { font-size:22px; }
+  #overlay p { font-size:13px; color:#bfe6cc; line-height:1.6; max-width:280px; }
+  .bigbtn {
+    font-size:16px; font-weight:700; padding:14px 28px; min-height:48px; min-width:44px;
+    border-radius:14px; border:none; background:#4fd08a; color:#08170f; cursor:pointer;
+  }
+  .bigbtn:active { background:#3ab876; }
+  .bigbtn.secondary { background:#3a5a48; color:#e9fbee; }
+  footer#actionBar {
+    width:100%; max-width:420px; flex:0 0 auto; padding:8px 10px calc(10px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:6px;
+    background:#0d1a13; border-top:1px solid rgba(160,220,180,.14); position:relative; z-index:2;
+  }
+  #slotInfo { font-size:12px; color:#a9d9bb; min-height:16px; text-align:center; }
+  #actionButtons { display:flex; gap:8px; }
+  .actbtn {
+    flex:1 1 0; min-height:48px; border-radius:12px; border:1px solid rgba(160,220,180,.3);
+    background:#1b3326; color:#eaf6ee; font-size:12px; font-weight:700;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    line-height:1.25; padding:4px 2px;
+  }
+  .actbtn:active:not(:disabled) { background:#2a4d39; }
+  .actbtn:disabled { opacity:.35; }
+  .actbtn.sell { border-color:rgba(255,150,150,.35); }
+  .foot2 { text-align:center; color:#5f8a6d; font-size:10px; padding-top:2px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <a class="backlink" href="index.html">&larr; ゲーム置き場</a>
+    <div class="hud">
+      <span class="badge" id="hudGold">💰0</span>
+      <span class="badge" id="hudLife">❤️0</span>
+      <span class="badge" id="hudWave">面 -/- 波 -/-</span>
+    </div>
+  </header>
+  <div id="stageTitle">スライム防衛隊タワーディフェンス</div>
+  <div id="canvasWrap">
+    <div id="stage">
+      <canvas id="game"></canvas>
+      <div id="overlay">
+        <h2>スライム防衛隊タワーディフェンス</h2>
+        <p>侵入してくる乗り物・戦車・飛行機を、道の脇にタワーを建てて迎え撃て。<br>全4面を凌ぎ切れば防衛成功。</p>
+        <button class="bigbtn" id="startBtn">タップしてスタート</button>
+      </div>
+    </div>
+  </div>
+  <footer id="actionBar">
+    <div id="slotInfo">道の脇のマスをタップしてタワーを建てよう</div>
+    <div id="actionButtons">
+      <button class="actbtn" id="btnCannon">砲台<br>$--</button>
+      <button class="actbtn" id="btnMissile">ミサイル<br>$--</button>
+      <button class="actbtn" id="btnUpgrade">強化<br>$--</button>
+      <button class="actbtn sell" id="btnSell">売却<br>+$--</button>
+    </div>
+    <div class="foot2">外部通信なし・オフライン動作</div>
+  </footer>
+</div>
+
+<script type="module">
+import {
+  createGame, stepGame, drainEvents, buildTower, upgradeTower, sellTower,
+  advanceStage, getEnemyRenderPos, STAGES, TOWER_TYPES,
+} from './td-logic.js';
+
+// ---------------------------------------------------------------------------
+// 見た目まわりの定数（ロジックとは無関係の描画専用データ）
+// ---------------------------------------------------------------------------
+const CELL = 56;
+const GROUND_TILE = { grass: 124, sand: 193, rock: 262 };
+const PATH_TILE = 55;
+const SLOT_EMPTY_TILE = 38;
+const SLOT_SELECTED_TILE = 41;
+const DECOR_TILES = [130, 131, 132, 134, 135, 136, 137, 183];
+const BULLET_SPRITE = { cannon: 272, missile: 251 };
+const EXPLOSION_FRAMES = [295, 296, 297, 298];
+const HIT_SPARK = 273;
+
+const ASSET_DIR = 'assets/kenney_tower-defense-top-down/';
+function tileSrc(n) {
+  return ASSET_DIR + 'towerDefense_tile' + String(n).padStart(3, '0') + '.png';
+}
+
+// 使用する全タイル番号を集めてプリロードする
+function collectTileIds() {
+  const ids = new Set([PATH_TILE, SLOT_EMPTY_TILE, SLOT_SELECTED_TILE, HIT_SPARK]);
+  Object.values(GROUND_TILE).forEach((n) => ids.add(n));
+  DECOR_TILES.forEach((n) => ids.add(n));
+  EXPLOSION_FRAMES.forEach((n) => ids.add(n));
+  Object.values(BULLET_SPRITE).forEach((n) => ids.add(n));
+  Object.values(TOWER_TYPES).forEach((def) => {
+    ids.add(def.baseSprite);
+    def.barrelSprites.forEach((n) => ids.add(n));
+  });
+  STAGES.forEach((s) => {
+    ids.add(s.enemySprites.runner);
+    ids.add(s.enemySprites.tank);
+    ids.add(s.enemySprites.flyer);
+  });
+  return Array.from(ids);
+}
+
+const images = new Map();
+function loadImages() {
+  const ids = collectTileIds();
+  return Promise.all(ids.map((id) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve(); // 読み込み失敗でもゲームは止めない
+    img.src = tileSrc(id);
+    images.set(id, img);
+  })));
+}
+function img(id) { return images.get(id); }
+
+// 決定論的な「ハッシュ」（装飾配置に使う。Math.random は使わない）
+function hash2(x, y, salt) {
+  let h = (x * 374761393 + y * 668265263 + salt * 2246822519) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h, 1274126177) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+// ---------------------------------------------------------------------------
+// Web Audio（オシレーター合成・iOS Safari 対策込み）
+// ---------------------------------------------------------------------------
+let audioCtx = null;
+function ensureAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') { try { audioCtx.resume(); } catch (e) {} }
+    return;
+  }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  } catch (e) { audioCtx = null; }
+}
+function tone(freq, dur, type, gain, delay) {
+  if (!audioCtx) return;
+  try {
+    const t0 = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(gain || 0.12, 0.0001), t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  } catch (e) { /* 消音でも進行に影響させない */ }
+}
+const SFX = {
+  hit() { tone(520, 0.05, 'triangle', 0.08); },
+  kill() { tone(760, 0.05, 'sawtooth', 0.12); tone(420, 0.08, 'sawtooth', 0.1, 0.05); },
+  lifeLost() { tone(140, 0.22, 'square', 0.16); tone(90, 0.25, 'square', 0.14, 0.05); },
+  waveStart() { tone(440, 0.09, 'square', 0.09); tone(554, 0.09, 'square', 0.09, 0.1); tone(659, 0.12, 'square', 0.1, 0.2); },
+  stageClear() { tone(523, 0.12, 'triangle', 0.12); tone(659, 0.12, 'triangle', 0.12, 0.12); tone(784, 0.2, 'triangle', 0.14, 0.24); },
+  allClear() { tone(523, 0.1, 'triangle', 0.13); tone(659, 0.1, 'triangle', 0.13, 0.1); tone(784, 0.1, 'triangle', 0.13, 0.2); tone(1046, 0.28, 'triangle', 0.16, 0.3); },
+  lost() { tone(392, 0.18, 'sawtooth', 0.12); tone(330, 0.18, 'sawtooth', 0.11, 0.16); tone(262, 0.3, 'sawtooth', 0.1, 0.32); },
+};
+
+// ---------------------------------------------------------------------------
+// ゲーム本体・描画状態
+// ---------------------------------------------------------------------------
+let game = createGame(Date.now() >>> 0);
+let selectedSlot = null;
+let decorCache = null;
+let fxList = [];       // {x,y,frame,timer,kind}
+let waveBanner = null; // {text, timer}
+let flashTimer = 0;
+let shakeTimer = 0;
+
+function rebuildDecorCache() {
+  const stg = game.stage;
+  const pathSet = new Set(stg.path.map(([x, y]) => x + ',' + y));
+  const slotSet = new Set(stg.slots.map((s) => s.x + ',' + s.y));
+  const list = [];
+  for (let y = 0; y < stg.rows; y++) {
+    for (let x = 0; x < stg.cols; x++) {
+      const key = x + ',' + y;
+      if (pathSet.has(key) || slotSet.has(key)) continue;
+      const h = hash2(x, y, stg.id + 1);
+      if (h % 6 === 0) {
+        list.push({ x, y, tile: DECOR_TILES[h % DECOR_TILES.length] });
+      }
+    }
+  }
+  decorCache = list;
+}
+rebuildDecorCache();
+
+function handleEvents(events) {
+  for (const ev of events) {
+    if (ev.type === 'hit') {
+      fxList.push({ x: ev.x, y: ev.y, timer: 0, kind: 'hit' });
+      SFX.hit();
+    } else if (ev.type === 'kill') {
+      fxList.push({ x: ev.x, y: ev.y, timer: 0, kind: 'kill' });
+      SFX.kill();
+    } else if (ev.type === 'life-lost') {
+      flashTimer = 0.35;
+      shakeTimer = 0.3;
+      SFX.lifeLost();
+    } else if (ev.type === 'wave-start') {
+      waveBanner = { text: 'WAVE ' + ev.wave, timer: 1.6 };
+      SFX.waveStart();
+    } else if (ev.type === 'stage-clear') {
+      SFX.stageClear();
+    } else if (ev.type === 'all-clear') {
+      SFX.allClear();
+    } else if (ev.type === 'lost') {
+      SFX.lost();
+    }
+    // 'shot' は音無しでマズルフラッシュのみ（描画側で都度参照するため保存しない）
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Canvas 準備
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const w = game.stage.cols * CELL;
+  const h = game.stage.rows * CELL;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.aspectRatio = w + ' / ' + h;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resizeCanvas();
+
+function drawTile(id, x, y, size) {
+  const im = img(id);
+  if (!im || !im.complete || im.naturalWidth === 0) return;
+  ctx.drawImage(im, x, y, size, size);
+}
+
+function drawRotated(id, cx, cy, size, angle) {
+  const im = img(id);
+  if (!im || !im.complete || im.naturalWidth === 0) return;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.drawImage(im, -size / 2, -size / 2, size, size);
+  ctx.restore();
+}
+
+function findTowerAtSlot(idx) {
+  return game.towers.find((t) => t.slotIndex === idx) || null;
+}
+
+function nearestEnemyAngle(cx, cy, range) {
+  let best = null, bestD = Infinity;
+  for (const e of game.enemies) {
+    const p = getEnemyRenderPos(game, e);
+    const px = p.x * CELL, py = p.y * CELL;
+    const d = Math.hypot(px - cx, py - cy);
+    if (d <= range * CELL && d < bestD) { bestD = d; best = { x: px, y: py }; }
+  }
+  if (!best) return null;
+  return Math.atan2(best.y - cy, best.x - cx);
+}
+
+function render() {
+  const stg = game.stage;
+  const w = stg.cols * CELL, h = stg.rows * CELL;
+  ctx.clearRect(0, 0, w, h);
+
+  let shakeX = 0, shakeY = 0;
+  if (shakeTimer > 0) {
+    shakeX = Math.sin(shakeTimer * 60) * 4 * (shakeTimer / 0.3);
+    shakeY = Math.cos(shakeTimer * 47) * 3 * (shakeTimer / 0.3);
+  }
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  const groundId = GROUND_TILE[stg.theme] || GROUND_TILE.grass;
+  const pathSet = new Set(stg.path.map(([x, y]) => x + ',' + y));
+  for (let y = 0; y < stg.rows; y++) {
+    for (let x = 0; x < stg.cols; x++) {
+      drawTile(groundId, x * CELL, y * CELL, CELL);
+      if (pathSet.has(x + ',' + y)) drawTile(PATH_TILE, x * CELL, y * CELL, CELL);
+    }
+  }
+
+  for (const d of decorCache) drawTile(d.tile, d.x * CELL, d.y * CELL, CELL);
+
+  stg.slots.forEach((slot, idx) => {
+    if (slot.towerId != null) return;
+    const tileId = idx === selectedSlot ? SLOT_SELECTED_TILE : SLOT_EMPTY_TILE;
+    drawTile(tileId, slot.x * CELL, slot.y * CELL, CELL);
+  });
+
+  for (const tower of game.towers) {
+    const slot = stg.slots[tower.slotIndex];
+    const cx = (slot.x + 0.5) * CELL, cy = (slot.y + 0.5) * CELL;
+    const def = TOWER_TYPES[tower.type];
+    drawTile(def.baseSprite, slot.x * CELL, slot.y * CELL, CELL);
+    const angle = nearestEnemyAngle(cx, cy, tower.range);
+    const barrelAngle = (angle == null ? -Math.PI / 2 : angle) + Math.PI / 2;
+    drawRotated(def.barrelSprites[tower.level - 1], cx, cy, CELL, barrelAngle);
+    if (tower.slotIndex === selectedSlot) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,120,.9)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(slot.x * CELL + 2, slot.y * CELL + 2, CELL - 4, CELL - 4);
+      ctx.restore();
+    }
+  }
+
+  for (const enemy of game.enemies) {
+    const p = getEnemyRenderPos(game, enemy);
+    const cx = p.x * CELL, cy = p.y * CELL;
+    const spriteId = stg.enemySprites[enemy.kind];
+    drawRotated(spriteId, cx, cy, CELL * 0.85, p.angle + Math.PI / 2);
+    const barW = CELL * 0.6;
+    const ratio = Math.max(0, enemy.hp / enemy.maxHp);
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    ctx.fillRect(cx - barW / 2, cy - CELL * 0.55, barW, 5);
+    ctx.fillStyle = ratio > 0.4 ? '#5fe08a' : '#e0665f';
+    ctx.fillRect(cx - barW / 2, cy - CELL * 0.55, barW * ratio, 5);
+  }
+
+  for (const proj of game.projectiles) {
+    const spriteId = BULLET_SPRITE[proj.type] || HIT_SPARK;
+    drawTile(spriteId, proj.x * CELL - 12, proj.y * CELL - 12, 24);
+  }
+
+  fxList = fxList.filter((fx) => {
+    fx.timer += 1 / 60;
+    const dur = fx.kind === 'kill' ? 0.32 : 0.14;
+    if (fx.timer >= dur) return false;
+    const frames = fx.kind === 'kill' ? EXPLOSION_FRAMES : [HIT_SPARK];
+    const fi = Math.min(frames.length - 1, Math.floor((fx.timer / dur) * frames.length));
+    const size = fx.kind === 'kill' ? CELL * 0.9 : CELL * 0.5;
+    drawTile(frames[fi], fx.x * CELL - size / 2, fx.y * CELL - size / 2, size);
+    return true;
+  });
+
+  if (flashTimer > 0) {
+    ctx.fillStyle = 'rgba(220,40,40,' + (flashTimer / 0.35 * 0.35) + ')';
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  if (waveBanner) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, waveBanner.timer);
+    ctx.fillStyle = 'rgba(10,20,15,.65)';
+    ctx.fillRect(0, h / 2 - 26, w, 52);
+    ctx.fillStyle = '#eafff0';
+    ctx.font = 'bold 26px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(waveBanner.text, w / 2, h / 2);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// HUD / アクションバー更新
+// ---------------------------------------------------------------------------
+const hudGold = document.getElementById('hudGold');
+const hudLife = document.getElementById('hudLife');
+const hudWave = document.getElementById('hudWave');
+const slotInfo = document.getElementById('slotInfo');
+const btnCannon = document.getElementById('btnCannon');
+const btnMissile = document.getElementById('btnMissile');
+const btnUpgrade = document.getElementById('btnUpgrade');
+const btnSell = document.getElementById('btnSell');
+
+function updateHud() {
+  hudGold.textContent = '💰' + game.gold;
+  hudLife.textContent = '❤️' + game.life;
+  const waveTotal = game.stage.waves.length;
+  const waveShown = Math.min(game.waveIndex + 1, waveTotal);
+  hudWave.textContent = '面 ' + (game.stageIndex + 1) + '/' + STAGES.length + ' 波 ' + waveShown + '/' + waveTotal;
+
+  const slot = selectedSlot != null ? game.stage.slots[selectedSlot] : null;
+  const tower = selectedSlot != null ? findTowerAtSlot(selectedSlot) : null;
+
+  const cCost = TOWER_TYPES.cannon.cost, mCost = TOWER_TYPES.missile.cost;
+  btnCannon.innerHTML = '砲台<br>$' + cCost;
+  btnMissile.innerHTML = 'ミサイル<br>$' + mCost;
+
+  if (!slot) {
+    slotInfo.textContent = '道の脇のマスをタップしてタワーを建てよう';
+    btnCannon.disabled = true; btnMissile.disabled = true;
+    btnUpgrade.disabled = true; btnSell.disabled = true;
+    btnUpgrade.innerHTML = '強化<br>$--';
+    btnSell.innerHTML = '売却<br>+$--';
+  } else if (!tower) {
+    slotInfo.textContent = '空きスロット (' + slot.x + ',' + slot.y + ') を選択中';
+    btnCannon.disabled = game.status !== 'playing' || game.gold < cCost;
+    btnMissile.disabled = game.status !== 'playing' || game.gold < mCost;
+    btnUpgrade.disabled = true; btnSell.disabled = true;
+    btnUpgrade.innerHTML = '強化<br>$--';
+    btnSell.innerHTML = '売却<br>+$--';
+  } else {
+    const def = TOWER_TYPES[tower.type];
+    slotInfo.textContent = def.label + ' Lv' + tower.level + (tower.level >= def.maxLevel ? '(最大)' : '');
+    btnCannon.disabled = true; btnMissile.disabled = true;
+    const upCost = Math.round(def.cost * def.upgradeCostMul * tower.level);
+    const refund = Math.round(tower.spentTotal * def.sellRefund);
+    btnUpgrade.innerHTML = '強化<br>$' + (tower.level >= def.maxLevel ? '--' : upCost);
+    btnSell.innerHTML = '売却<br>+$' + refund;
+    btnUpgrade.disabled = game.status !== 'playing' || tower.level >= def.maxLevel || game.gold < upCost;
+    btnSell.disabled = game.status !== 'playing';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 入力（ポインタイベントでタッチ／マウス両対応）
+// ---------------------------------------------------------------------------
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const relX = (e.clientX - rect.left) / rect.width * game.stage.cols * CELL;
+  const relY = (e.clientY - rect.top) / rect.height * game.stage.rows * CELL;
+  const cx = Math.floor(relX / CELL), cy = Math.floor(relY / CELL);
+  const idx = game.stage.slots.findIndex((s) => s.x === cx && s.y === cy);
+  selectedSlot = idx >= 0 ? idx : null;
+  updateHud();
+});
+
+['dblclick', 'gesturestart', 'gesturechange', 'gestureend'].forEach((evName) => {
+  document.addEventListener(evName, (e) => e.preventDefault(), { passive: false });
+});
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+btnCannon.addEventListener('click', () => {
+  if (selectedSlot == null) return;
+  const r = buildTower(game, selectedSlot, 'cannon');
+  if (r.ok) updateHud();
+});
+btnMissile.addEventListener('click', () => {
+  if (selectedSlot == null) return;
+  const r = buildTower(game, selectedSlot, 'missile');
+  if (r.ok) updateHud();
+});
+btnUpgrade.addEventListener('click', () => {
+  if (selectedSlot == null) return;
+  const r = upgradeTower(game, selectedSlot);
+  if (r.ok) updateHud();
+});
+btnSell.addEventListener('click', () => {
+  if (selectedSlot == null) return;
+  const r = sellTower(game, selectedSlot);
+  if (r.ok) { selectedSlot = null; updateHud(); }
+});
+
+// ---------------------------------------------------------------------------
+// オーバーレイ（開始 / 面クリア / 全面クリア / 失敗）
+// ---------------------------------------------------------------------------
+const overlay = document.getElementById('overlay');
+const stageEl = document.getElementById('stage');
+
+function showOverlay(html) {
+  overlay.innerHTML = html;
+  overlay.style.display = 'flex';
+}
+function hideOverlay() { overlay.style.display = 'none'; }
+
+let started = false;
+document.getElementById('startBtn').addEventListener('click', () => {
+  ensureAudio();
+  if (!started) { started = true; hideOverlay(); requestAnimationFrame(loop); }
+});
+
+function onStatusChange() {
+  if (game.status === 'stage-clear') {
+    showOverlay(
+      '<h2>第' + (game.stageIndex + 1) + '面 クリア！</h2>' +
+      '<p>所持ゴールド ' + game.gold + ' ・ 残りライフ ' + game.life + '</p>' +
+      '<button class="bigbtn" id="nextStageBtn">次の面へ</button>'
+    );
+    document.getElementById('nextStageBtn').addEventListener('click', () => {
+      ensureAudio();
+      advanceStage(game);
+      selectedSlot = null;
+      rebuildDecorCache();
+      resizeCanvas();
+      hideOverlay();
+      updateHud();
+    });
+  } else if (game.status === 'all-clear') {
+    showOverlay(
+      '<h2>全面クリア！防衛成功！</h2>' +
+      '<p>スライム防衛隊は最後まで基地を守り抜いた。</p>' +
+      '<button class="bigbtn" id="restartBtn">もう一度あそぶ</button>'
+    );
+    bindRestart();
+  } else if (game.status === 'lost') {
+    showOverlay(
+      '<h2>防衛失敗…</h2>' +
+      '<p>第' + (game.stageIndex + 1) + '面 波' + (game.waveIndex + 1) + ' で基地が陥落した。</p>' +
+      '<button class="bigbtn secondary" id="restartBtn">もう一度あそぶ</button>'
+    );
+    bindRestart();
+  }
+}
+function bindRestart() {
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    ensureAudio();
+    game = createGame(Date.now() >>> 0);
+    selectedSlot = null;
+    fxList = [];
+    waveBanner = null;
+    flashTimer = 0;
+    shakeTimer = 0;
+    rebuildDecorCache();
+    resizeCanvas();
+    hideOverlay();
+    updateHud();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// メインループ
+// ---------------------------------------------------------------------------
+let lastTs = null;
+function loop(ts) {
+  if (lastTs == null) lastTs = ts;
+  let dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  if (!isFinite(dt) || dt < 0) dt = 0;
+  dt = Math.min(dt, 0.05); // タブ切り替え等での大ジャンプを抑止
+
+  const prevStatus = game.status;
+  stepGame(game, dt);
+  const events = drainEvents(game);
+  handleEvents(events);
+
+  if (flashTimer > 0) flashTimer = Math.max(0, flashTimer - dt);
+  if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
+  if (waveBanner) { waveBanner.timer -= dt; if (waveBanner.timer <= 0) waveBanner = null; }
+
+  render();
+  updateHud();
+
+  if (prevStatus === 'playing' && game.status !== 'playing') onStatusChange();
+
+  requestAnimationFrame(loop);
+}
+
+// 初期プリロード
+loadImages().then(() => {
+  render();
+  updateHud();
+});
+window.addEventListener('resize', () => { /* CSS側で追従するため canvas 内部解像度は据え置きで良い */ });
+</script>
+</body>
+</html>
