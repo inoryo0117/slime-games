@@ -31,6 +31,8 @@ import { nextSpeed, normalizeSpeed, advanceFrame } from './speed-control.js';
    固定の論理解像度 W×H に描き、実画面へレターボックスでフィットさせる）
    ========================================================================= */
 const W = 390, H = 844;
+// 起動画面の右下に出すバージョン（更新日・機関室 slime-survivors の元コミット）
+const VERSION = 'v2026.09.24 (51223eb)';
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let scale = 1, offX = 0, offY = 0, cssW = 0, cssH = 0, dpr = 1;
@@ -231,73 +233,102 @@ function drawHeart(cx, cy, r, color) {
    （画像ファイルは作らない・読まない＝仕様書§10）。8種すべて見分けがつく形に。
    ------------------------------------------------------------------------- */
 function drawUpgradeIcon(cx, cy, key, color) {
-  const deep = darken(color, 0.45); // シルエットの主色（地の淡い色と見分けがつくよう濃くする）
+  // 本編のスライムと同じ塗り方：地の色はそのままパステル、輪郭だけ濃く縁取る
+  // （darken(color,0.45)を主形状の塗りに使わない＝2026-09-24 判定ツール修正後の方針）。
+  const deep = darken(color, 0.45);
   ctx.save();
   if (key === 'bubble') {
-    ctx.fillStyle = deep;
-    ctx.beginPath(); ctx.arc(cx - 5, cy + 6, 11, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 11, cy - 7, 6.5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(cx - 8, cy + 2, 3.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.95)';
+    ctx.strokeStyle = deep;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx - 5, cy + 6, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx + 11, cy - 7, 6.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
     ctx.beginPath(); ctx.arc(cx - 9, cy + 1, 2.2, 0, Math.PI * 2); ctx.fill();
   } else if (key === 'ring') {
-    for (const s of [-1, 1]) {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(s * 0.55);
-      ctx.fillStyle = deep;
-      ctx.beginPath(); ctx.ellipse(s * 11, 0, 10, 5.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
+    // 花びら2枚が自機のまわりを円軌道で回っている絵。軌道線を描き、その上下に
+    // 花びらを離して置く（左右に並べて下側でつなげると口ひげに見えるため上下にする）。
+    ctx.strokeStyle = deep;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = deep;
+    ctx.lineWidth = 1.8;
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(cx, cy + s * 17, 8.5, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   } else if (key === 'konpeito') {
+    // 星はそのまま（読める）。まわりの茶色い点2つ（何を表すか説明できない）は消す。
     drawStar(cx, cy, 13, color);
-    // こんぺいとうの粒々（本体の drawStar はそのまま・まわりに小さな粒を対角に添える）
-    ctx.fillStyle = deep;
-    ctx.beginPath(); ctx.arc(cx - 17, cy + 10, 4.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 17, cy - 13, 3.6, 0, Math.PI * 2); ctx.fill();
   } else if (key === 'mame') {
-    const spots = [[-9, 5], [0, -3], [9, 6]];
+    // 豆3粒。地はパステル・縁だけ濃くする
+    const spots = [[-10, 7], [0, -5], [10, 8]];
+    ctx.strokeStyle = deep;
+    ctx.lineWidth = 1.8;
     for (const [dx, dy] of spots) {
-      ctx.fillStyle = deep;
-      ctx.beginPath(); ctx.ellipse(cx + dx, cy + dy, 6.4, 4.6, 0.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = color;
+      ctx.beginPath(); ctx.ellipse(cx + dx, cy + dy, 7, 5, 0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
       ctx.beginPath(); ctx.ellipse(cx + dx - 1.5, cy + dy - 1, 2, 1.3, 0.5, 0, Math.PI * 2); ctx.fill();
     }
   } else if (key === 'boots') {
-    ctx.fillStyle = deep;
-    ctx.beginPath(); ctx.ellipse(cx + 2, cy + 4, 10, 6, -0.15, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 14, cy - 1, 5, 0, Math.PI * 2); ctx.fill();
+    // 右向きの矢印を3つ、右へ行くほど不透明にして「速い」を表す
+    const arrows = [[-15, 0.35], [0, 0.65], [15, 1.0]];
     ctx.strokeStyle = deep;
-    ctx.lineWidth = 2.6;
-    ctx.beginPath(); ctx.moveTo(cx - 10, cy - 3); ctx.lineTo(cx - 19, cy - 3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx - 8, cy + 7); ctx.lineTo(cx - 18, cy + 7); ctx.stroke();
-  } else if (key === 'magnet') {
-    ctx.strokeStyle = deep;
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.arc(cx, cy + 3, 9, Math.PI * 0.1, Math.PI * 0.9, false); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx - 9, cy + 3); ctx.lineTo(cx - 9, cy - 9); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 9, cy + 3); ctx.lineTo(cx + 9, cy - 9); ctx.stroke();
-    ctx.fillStyle = '#5670b0';
-    ctx.beginPath(); ctx.arc(cx - 16, cy - 12, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 14, cy - 15, 2.6, 0, Math.PI * 2); ctx.fill();
-  } else if (key === 'heart') {
-    drawHeart(cx, cy, 13, color);
-    // 結び目のリボン（本体の drawHeart はそのまま・下に小さく添える）
-    ctx.fillStyle = deep;
-    ctx.beginPath(); ctx.ellipse(cx - 9, cy + 15, 4.4, 3.2, -0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx + 9, cy + 15, 4.4, 3.2, 0.4, 0, Math.PI * 2); ctx.fill();
-  } else if (key === 'charm') {
-    ctx.fillStyle = deep;
-    roundRect(cx - 10, cy - 5, 20, 17, 4);
-    ctx.fill();
-    ctx.strokeStyle = darken(color, 0.75);
     ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(cx - 6, cy - 5); ctx.lineTo(cx + 6, cy - 5); ctx.stroke();
+    for (const [dx, a] of arrows) {
+      ctx.globalAlpha = a;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(cx + dx - 7, cy - 8);
+      ctx.lineTo(cx + dx - 7, cy + 8);
+      ctx.lineTo(cx + dx + 9, cy);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (key === 'magnet') {
+    // 上向きに開くU字（帯）。両端を極（赤・青）でふさぎ、開いた側に
+    // かけらと同じ形の小さな青い菱形を1つだけ置く（点2つは目に見えるため置かない）。
+    const path = () => {
+      ctx.beginPath();
+      ctx.moveTo(cx + 10, cy - 10);
+      ctx.lineTo(cx + 9.51, cy + 6.09);
+      ctx.arc(cx, cy + 3, 10, Math.PI * 0.1, Math.PI * 0.9, false);
+      ctx.lineTo(cx - 10, cy - 10);
+    };
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = deep; ctx.lineWidth = 10.5; path(); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = 7.5; path(); ctx.stroke();
+    ctx.fillStyle = '#e8a0a8';
+    roundRect(cx - 18, cy - 18, 16, 17, 2); ctx.fill();
+    ctx.fillStyle = '#9fb8e0';
+    roundRect(cx + 2, cy - 18, 16, 17, 2); ctx.fill();
+    ctx.save();
+    ctx.translate(cx, cy - 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#5eb0ea';
+    ctx.fillRect(-6.5, -6.5, 13, 13);
+    ctx.restore();
+  } else if (key === 'heart') {
+    // ハートはそのまま（読める）。下の黒い点2つ（何を表すか説明できない）は消す。
+    drawHeart(cx, cy, 13, color);
+  } else if (key === 'charm') {
+    // 縦長の巾着（横長だと箱に見えるため縦にする）。上に紐、中央に合わせ目の縦線
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(cx, cy + 3, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = deep;
+    ctx.lineWidth = 1.8;
+    roundRect(cx - 11, cy - 14, 22, 28, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy + 12); ctx.stroke();
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(cx + s * 6, cy - 15, 2.6, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy - 15); ctx.quadraticCurveTo(cx, cy - 20, cx + 6, cy - 15); ctx.stroke();
   }
   ctx.restore();
 }
@@ -658,9 +689,10 @@ function levelupCards() {
   if (!game || game.status !== 'levelup') return [];
   const cardW = W - 48, cardH = 104, gap = 14;
   const totalH = game.offers.length * cardH + (game.offers.length - 1) * gap;
-  // 画面中央だと下に余りが出て親指が届かない。最後のカードの下端を画面下から
-  // 44px の位置に固定する下寄せ（2026-09-24）。
-  const startY = H - 44 - totalH;
+  // 相対スティックで移動中は親指が画面下側にいるため、画面下270px（画面高844の
+  // 約1/3）を空けてカードを上へ戻す下端固定（2026-09-24 再修正）。
+  const BOTTOM_KEEP = 270;
+  const startY = H - BOTTOM_KEEP - totalH;
   return game.offers.map((o, i) => ({
     offer: o, x: 24, y: startY + i * (cardH + gap), w: cardW, h: cardH,
   }));
@@ -1036,6 +1068,10 @@ function drawTitle() {
   ctx.textBaseline = 'alphabetic';
   ctx.font = '400 11px -apple-system, sans-serif';
   ctx.fillText('オフラインで動きます', W / 2, H - 40);
+
+  ctx.textAlign = 'right';
+  ctx.font = '400 10px -apple-system, sans-serif';
+  ctx.fillText(VERSION, W - 14, H - 14);
 }
 
 function wrapText(text, maxWidth) {
@@ -1061,10 +1097,11 @@ function drawLevelup() {
   const topY = cards.length ? cards[0].y - 40 : H / 2 - 40;
   ctx.fillText('レベルアップ！', W / 2, topY);
 
-  // 空いた上側に自機を1体（2026-09-24 T-2c）
-  const heroY = cards.length ? cards[0].y - 150 : H / 2 - 150;
+  // 空いた上側に自機を1体（2026-09-24 T-2c）。カードが上へ戻ってもHUD（下端98）
+  // の裏に潜らないよう下限をクランプする（2026-09-24 再修正）。
+  const heroY = cards.length ? Math.max(146, cards[0].y - 150) : H / 2 - 150;
   const heroAnim = creatureAnim('levelup-hero', W / 2, heroY, 0, 0);
-  drawCreature(W / 2, heroY, 28, heroAnim, COL.player.main, COL.player.shade, 0.4);
+  drawCreature(W / 2, heroY, 24, heroAnim, COL.player.main, COL.player.shade, 0.4);
 
   for (const c of cards) {
     ctx.save();
@@ -1169,6 +1206,7 @@ function loop(ts) {
     stepAccum += BASE_SPEED;
     const outerSteps = Math.floor(stepAccum);
     stepAccum -= outerSteps;
+    let ran = 0; // advanceFrame の中で実際に stepGame が呼ばれた回数
     for (let o = 0; o < outerSteps; o++) {
       if (game.status !== 'playing') break;
       // dt は変えず、同じ dt で stepGame を speedMul 回呼ぶ（speed-control.js）
@@ -1183,8 +1221,10 @@ function loop(ts) {
         if (bossBanner > 0) bossBanner -= dt;
         // player の速度算出用に前フレーム座標を保持
         entPrev.set('player', { x: game.player.x, y: game.player.y, angle: entPrev.get('player')?.angle ?? Math.PI / 2 });
+        ran++;
       });
     }
+    if (ran === 0) clock += dt; // playing 以外で1回も進まなかった間も演出用の時計は進める
   } else {
     clock += dt; // ゲーム進行中でない間も演出用の時計は進める
   }
@@ -1198,6 +1238,7 @@ requestAnimationFrame(loop);
 window.__diag = {
   hudBottom: 0, // その回のrender()で実際に描いたHUDの最下端（論理px）。renderScene()内で毎フレーム上書きする
   get cam() { return game ? camera() : null; },
+  get clock() { return clock; },
   get game() { return game; },
   get speedMul() { return speedMul; },
   setSpeed(v) { speedMul = normalizeSpeed(v); return speedMul; },
