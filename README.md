@@ -11,6 +11,7 @@ Free, bite-sized browser games. No download, no sign-up — they run right in yo
 | ゲーム | 内容 |
 |---|---|
 | [スライム・サバイバーズ](slime-survivors.html) | 見下ろし視点の自動攻撃サバイバー。ゆび1本で動かすだけ。1ラン約8分、7分でボスが出ます。難易度3段階 |
+| [ちびキャラ・サバイバーズ](chibi-survivors.html) | スライム・サバイバーズの見た目違い。主人公が8方向に歩くドット絵のちびキャラ。ルールは同じ |
 | [スライム防衛隊タワーディフェンス](slime-tower.html) | 道の脇にタワーを建てて迎え撃つ。全4ステージ |
 | [スライム・イン・かご](slime-basket.html) | 動くかごにスライムを入れるスコアアタック。3回落としたら終わり |
 
@@ -23,4 +24,4 @@ Free, bite-sized browser games. No download, no sign-up — they run right in yo
 
 ## 画像素材
 
-`assets/kenney_tower-defense-top-down/` は [Kenney](https://kenney.nl/assets/tower-defense-top-down) の Tower Defense (top-down) Pack（CC0）です。同梱の `License.txt` を参照してください。それ以外のグラフィックはすべてコードで描いています。
+`assets/kenney_tower-defense-top-down/` は [Kenney](https://kenney.nl/assets/tower-defense-top-down) の Tower Defense (top-down) Pack（CC0）です。同梱の `License.txt` を参照してください。`chibi-sprites.png`（ちびキャラの絵）は画像生成AIで描かせたものをドット単位で整えたものです。それ以外のグラフィックはすべてコードで描いています。
