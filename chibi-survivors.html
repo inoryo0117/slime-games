@@ -134,6 +134,7 @@ window.__spritesReady = false;
 spriteImg.onload = () => { window.__spritesReady = true; };
 spriteImg.src = './chibi-sprites.png';
 const SPRITE_CELL = 40; // 元素材の1セルのドット数
+const SPRITE_HURT_COL = 2; // 被弾時の絵（列0・1は歩き2コマ）
 const SPRITE_DRAW = 80; // 描画サイズ（1ドット=論理2px固定・拡大率は可変にしない）
 // スプライトの行 = atan2(vy, vx) を45度ずつに割ったセクタ番号。
 // 0=右 1=右下 2=下 3=左下 4=左 5=左上 6=上 7=右上（右上は gen_sheet4.py の生成絵、左上はその左右反転）。
@@ -999,9 +1000,12 @@ function drawPlayer(cam) {
   const frameCol = moving ? Math.floor(game.t * 6) % 2 : 0;
 
   // 被弾演出：輪郭明滅の代わりに、スプライトを1フレームおきに描かない（点滅）
+  // 点滅中に見えているコマは、シート列2の「目をつぶった顔」に差し替える
   let showSprite = true;
+  let spriteCol = frameCol;
   if (playerHurtT < FX_DUR.hurt) {
     showSprite = Math.floor(playerHurtT * 26) % 2 === 0;
+    spriteCol = SPRITE_HURT_COL;
   }
 
   if (window.__spritesReady && showSprite) {
@@ -1012,7 +1016,7 @@ function drawPlayer(cam) {
     const dy = sy + drawR * 0.9 - SPRITE_DRAW;
     ctx.drawImage(
       spriteImg,
-      frameCol * SPRITE_CELL, playerFacingRow * SPRITE_CELL, SPRITE_CELL, SPRITE_CELL,
+      spriteCol * SPRITE_CELL, playerFacingRow * SPRITE_CELL, SPRITE_CELL, SPRITE_CELL,
       dx, dy, SPRITE_DRAW, SPRITE_DRAW,
     );
     ctx.restore();
