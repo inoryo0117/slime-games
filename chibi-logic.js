@@ -565,7 +565,9 @@ function updateWeaponsFiring(game, dt) {
       const target = nearestEnemy(game);
       if (target) {
         fireBubble(game, lvl, target);
-        emit(game, { type: 'shot', x: game.player.x, y: game.player.y });
+        // tx/ty は狙い先の座標。描画側で「撃った方向」を向かせるための情報で、
+        // ロジックの状態には影響しない（stateHashには乗らない）。
+        emit(game, { type: 'shot', x: game.player.x, y: game.player.y, tx: target.x, ty: target.y });
       }
       ws.bubble.cd += lvl.cd;
     }
