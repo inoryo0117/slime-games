@@ -419,7 +419,15 @@ function cullFarEnemies(game) {
   game.enemies = game.enemies.filter((e) => {
     const dx = e.x - p.x;
     const dy = e.y - p.y;
-    return dx * dx + dy * dy <= limitSq;
+    if (dx * dx + dy * dy <= limitSq) return true;
+    if (ENEMY_TYPES[e.type].boss) {
+      // ボスは出現後1回きりなので消さず、同じ方向のままリング上に引き戻して追跡を続ける。
+      const dist = Math.hypot(dx, dy) || 1;
+      e.x = p.x + (dx / dist) * SPAWN_RING_R;
+      e.y = p.y + (dy / dist) * SPAWN_RING_R;
+      return true;
+    }
+    return false;
   });
 }
 
