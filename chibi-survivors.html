@@ -144,6 +144,25 @@ const DIR_SECTOR = Math.PI / 4; // 8方向なので1セクタ45度
 // そこで「一番近いセクタが、今の向きよりこの角度ぶん近いときだけ乗り換える」に変える。
 // 境目に±4度の不感帯ができるだけで、斜めの幅はほぼ45度のまま残る。
 const DIR_MARGIN = 0.14; // 約8度
+// 「弾を撃つ方に向ける」用：最後に撃った狙い角と、その時刻（clock基準）。
+// 撃ってから一定時間は、逃げながら撃っても背中から弾が出て見えないよう
+// 移動方向より狙い方向を優先する。
+let lastAimAngle = null;
+let lastAimT = -999;
+const AIM_HOLD = 1.2; // しゃぼんの最長間隔0.9秒より長くして、連射中は狙い方向に固定されるようにする
+
+// 角度→8方向セクタ番号を、不感帯つきで既存の向きから乗り換える共通処理。
+// drawPlayer の速度ベース判定と、狙い角ベース判定の両方から使う。
+function pickFacingRow(ang, currentRow) {
+  const near = ((Math.round(ang / DIR_SECTOR) % 8) + 8) % 8;
+  if (near === currentRow) return currentRow;
+  // 角度差は -π..π に畳んでから絶対値を取る（0度と360度をまたぐため）
+  const gap = (row) => {
+    const d = ang - row * DIR_SECTOR;
+    return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+  };
+  return (gap(currentRow) - gap(near) > DIR_MARGIN) ? near : currentRow;
+}
 
 const FX_DUR = { shot: 0.10, hit: 0.16, pop: 0.55, hurt: 0.5, levelup: 0.9, strike: 0.35, boss: 1.2, clear: 1.8, heal: 0.55, gem: 0.28 };
 
@@ -798,6 +817,8 @@ function startRun(diffKey) {
   bossBanner = 0;
   stick = null;
   speedMul = 1;
+  lastAimAngle = null;
+  lastAimT = -999;
 }
 
 /* =========================================================================
@@ -805,7 +826,14 @@ function startRun(diffKey) {
    ========================================================================= */
 function handleEvents(events) {
   for (const ev of events) {
-    if (ev.type === 'shot') fxList.push({ name: 'shot', x: ev.x, y: ev.y, t0: clock });
+    if (ev.type === 'shot') {
+      fxList.push({ name: 'shot', x: ev.x, y: ev.y, t0: clock });
+      // 撃った方向を向かせるため、狙い角(tx,ty)を記録する
+      if (ev.tx != null && ev.ty != null) {
+        lastAimAngle = Math.atan2(ev.ty - ev.y, ev.tx - ev.x);
+        lastAimT = clock;
+      }
+    }
     else if (ev.type === 'hit') fxList.push({ name: 'hit', x: ev.x, y: ev.y, t0: clock });
     else if (ev.type === 'pop') fxList.push({ name: 'pop', x: ev.x, y: ev.y, t0: clock });
     else if (ev.type === 'hurt') { fxList.push({ name: 'hurt', x: ev.x, y: ev.y, t0: clock }); playerHurtT = 0; }
@@ -954,19 +982,15 @@ function drawPlayer(cam) {
   ctx.stroke();
   ctx.restore();
 
-  // 向き：速度が十分あれば左右/上下いずれか大きい方の軸で決め、ほぼ0なら直前の向きを保持
+  // 向き：撃った直後(AIM_HOLD秒以内)は狙い方向を優先し、背中から弾が出て見えないようにする。
+  // それ以外は従来どおり速度ベース（速度が十分あれば向きを更新、ほぼ0なら直前の向きを保持）。
   const speed = Math.hypot(vx, vy);
-  if (speed > 4) {
+  const aiming = lastAimAngle != null && (clock - lastAimT) <= AIM_HOLD;
+  if (aiming) {
+    playerFacingRow = pickFacingRow(lastAimAngle, playerFacingRow);
+  } else if (speed > 4) {
     const ang = Math.atan2(vy, vx);
-    const near = ((Math.round(ang / DIR_SECTOR) % 8) + 8) % 8;
-    if (near !== playerFacingRow) {
-      // 角度差は -π..π に畳んでから絶対値を取る（0度と360度をまたぐため）
-      const gap = (row) => {
-        const d = ang - row * DIR_SECTOR;
-        return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
-      };
-      if (gap(playerFacingRow) - gap(near) > DIR_MARGIN) playerFacingRow = near;
-    }
+    playerFacingRow = pickFacingRow(ang, playerFacingRow);
   }
   const moving = speed > 4;
   const frameCol = moving ? Math.floor(game.t * 6) % 2 : 0;
