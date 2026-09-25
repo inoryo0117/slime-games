@@ -33,7 +33,7 @@ import { nextSpeed, normalizeSpeed, advanceFrame } from './chibi-speed-control.j
 const W = 390, H = 844;
 // 起動画面の右下に出すバージョン（更新日・元にした slime-games main のコミット）。
 // ちびキャラは機関室の slime-survivors に無いので、スライム版と違い公開側のコミットを書く
-const VERSION = 'v2026.09.25 (e941f4d)';
+const VERSION = 'v2026.09.25 (202b6fc)';
 const cv = document.getElementById('cv');
 const mainCtx = cv.getContext('2d');
 let ctx = mainCtx;
@@ -53,13 +53,9 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
 resize();
 
-/* 低解像度ワールドレイヤー：1ドット=論理2px に統一する。主人公スプライトは40ドットの
-   セルを80論理pxで描くため、この倍率だとちょうど等倍になりリサンプルされない。
-   敵・床・エフェクトも同じ格子に乗せて画風を1手で揃える（タイトル/レベルアップ/終了画面は
-   文字が潰れるため対象外＝高解像度のまま mainCtx に直接描く）。 */
-const lowCv = document.createElement('canvas');
-lowCv.width = W / 2; lowCv.height = H / 2;
-const lowCtx = lowCv.getContext('2d');
+// 2026-09-25 高解像度化：以前はここで低解像度ワールドレイヤー(lowCv, W/2×H/2)を作り、
+// 世界パスを1ドット=論理2pxの粗い格子に描いてから2倍に最近傍拡大していた（画像が粗く見える
+// 原因の一つだったため撤去。世界パスは mainCtx へ直接、dpr込みのフル解像度で描く）。
 
 function toLogical(clientX, clientY) {
   const r = cv.getBoundingClientRect();
@@ -135,7 +131,7 @@ const spriteImg = new Image();
 window.__spritesReady = false;
 spriteImg.onload = () => { window.__spritesReady = true; };
 spriteImg.src = './chibi-sprites.png';
-const SPRITE_CELL = 40; // 元素材の1セルのドット数
+const SPRITE_CELL = 160; // 元素材の1セルのドット数（2026-09-25 高解像度化：40->160）
 // 2026-09-25 画像生成のドット絵シートに差し替えて列の意味が変わった：
 // 列0=待機 列1=歩き 列2=攻撃 列3=被弾（旧シートは列0/1=歩き2コマ・列2=被弾だった）
 const SPRITE_IDLE_COL = 0;
@@ -148,8 +144,10 @@ const ATTACK_HOLD = 0.15; // しゃぼんを撃ってから攻撃コマを見せ
 /* =========================================================================
    敵スプライト（2026-09-25・画像生成のドット絵シートから切り出し）。
    chibi-enemies.png 1枚＋下のJS定数。座標はそのシート内のpx。
-   低解像度レイヤー(1ドット=論理2px)に drawCreature と同じ流儀で直接描くため、
-   drawImage の destのw/hは「シートpx×2」（＝lowCtxのsetTransform(0.5,..)で戻る）。
+   mainCtx（dpr込みのフル解像度）に drawCreature と同じ流儀で直接描くため、
+   drawImage の destのw/hは「シートpx×px（drawEnemySpriteScaledの第4引数）」がそのまま
+   論理pxになる。シートは2026-09-25に4倍解像度化したため、既定pxは旧2から0.5に、
+   タイトル用のpxは旧4から1にして見た目サイズを変えていない（後述）。
    画像読み込み前は従来の drawCreature を保険として残す（__enemySpritesReady）。
    ========================================================================= */
 const enemySpriteImg = new Image();
@@ -159,46 +157,47 @@ enemySpriteImg.src = './chibi-enemies.png';
 // 2026-09-25 切り出しスクリプトが出力した座標。
 // シート本体は chibi-enemies.png。座標はそのシート内のpx、ax/ayは描画アンカー（下端中央）
 // だが実際の描画では見た目をdrawCreatureに揃えるため中心(w/2,h/2)を使う。
-const ENEMY_SHEET_W = 745, ENEMY_SHEET_H = 198;
+const ENEMY_SHEET_W = 2908, ENEMY_SHEET_H = 757;
 const ENEMY_SPRITES = {
   poyo: {
-    idle: [{x:0,y:3,w:16,h:13,ax:8.0,ay:13.0},{x:18,y:3,w:16,h:13,ax:8.0,ay:13.0},{x:36,y:2,w:16,h:14,ax:8.0,ay:14.0},{x:54,y:2,w:16,h:14,ax:8.0,ay:14.0},{x:72,y:2,w:16,h:14,ax:8.0,ay:14.0},{x:90,y:1,w:16,h:15,ax:8.0,ay:15.0},{x:108,y:1,w:16,h:15,ax:8.0,ay:15.0}],
-    hit: [{x:126,y:2,w:16,h:14,ax:8.0,ay:14.0}],
-    squish: [{x:144,y:7,w:19,h:9,ax:9.5,ay:9.0}],
-    die: [{x:165,y:0,w:20,h:16,ax:10.0,ay:16.0}],
+    idle: [{x:0,y:12,w:62,h:54,ax:31.0,ay:54.0}, {x:64,y:13,w:62,h:53,ax:31.0,ay:53.0}, {x:128,y:10,w:62,h:56,ax:31.0,ay:56.0}, {x:192,y:10,w:62,h:56,ax:31.0,ay:56.0}, {x:256,y:9,w:62,h:57,ax:31.0,ay:57.0}, {x:320,y:10,w:62,h:56,ax:31.0,ay:56.0}, {x:384,y:9,w:64,h:57,ax:32.0,ay:57.0}],
+    hit: [{x:450,y:9,w:66,h:57,ax:33.0,ay:57.0}],
+    squish: [{x:518,y:30,w:80,h:36,ax:40.0,ay:36.0}],
+    die: [{x:600,y:0,w:85,h:66,ax:42.5,ay:66.0}],
   },
   tsubu: {
-    idle: [{x:0,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:18,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:36,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:54,y:18,w:15,h:17,ax:7.5,ay:17.0},{x:71,y:20,w:16,h:15,ax:8.0,ay:15.0},{x:89,y:19,w:16,h:16,ax:8.0,ay:16.0},{x:107,y:19,w:16,h:16,ax:8.0,ay:16.0}],
-    hit: [{x:125,y:19,w:16,h:16,ax:8.0,ay:16.0}],
-    squish: [{x:143,y:19,w:16,h:16,ax:8.0,ay:16.0}],
-    die: [{x:161,y:26,w:14,h:9,ax:7.0,ay:9.0}],
+    idle: [{x:0,y:76,w:63,h:61,ax:31.5,ay:61.0}, {x:65,y:76,w:63,h:61,ax:31.5,ay:61.0}, {x:130,y:76,w:63,h:61,ax:31.5,ay:61.0}, {x:195,y:68,w:61,h:69,ax:30.5,ay:69.0}, {x:258,y:76,w:63,h:61,ax:31.5,ay:61.0}, {x:323,y:74,w:63,h:63,ax:31.5,ay:63.0}, {x:388,y:74,w:63,h:63,ax:31.5,ay:63.0}],
+    hit: [{x:453,y:72,w:65,h:65,ax:32.5,ay:65.0}],
+    squish: [{x:520,y:72,w:65,h:65,ax:32.5,ay:65.0}],
+    die: [{x:587,y:102,w:55,h:35,ax:27.5,ay:35.0}],
   },
   hane: {
-    idle: [{x:0,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:17,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:34,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:51,y:37,w:15,h:14,ax:7.5,ay:14.0},{x:68,y:38,w:15,h:13,ax:7.5,ay:13.0},{x:85,y:37,w:15,h:14,ax:7.5,ay:14.0},{x:102,y:38,w:15,h:13,ax:7.5,ay:13.0}],
-    hit: [{x:119,y:38,w:15,h:13,ax:7.5,ay:13.0}],
-    squish: [{x:136,y:38,w:16,h:13,ax:8.0,ay:13.0}],
-    die: [{x:154,y:43,w:17,h:8,ax:8.5,ay:8.0}],
+    idle: [{x:0,y:142,w:60,h:51,ax:30.0,ay:51.0}, {x:62,y:142,w:58,h:51,ax:29.0,ay:51.0}, {x:122,y:142,w:58,h:51,ax:29.0,ay:51.0}, {x:182,y:139,w:58,h:54,ax:29.0,ay:54.0}, {x:242,y:140,w:60,h:53,ax:30.0,ay:53.0}, {x:304,y:139,w:60,h:54,ax:30.0,ay:54.0}, {x:366,y:142,w:60,h:51,ax:30.0,ay:51.0}],
+    hit: [{x:428,y:142,w:58,h:51,ax:29.0,ay:51.0}],
+    squish: [{x:488,y:142,w:64,h:51,ax:32.0,ay:51.0}],
+    die: [{x:554,y:160,w:68,h:33,ax:34.0,ay:33.0}],
   },
   mochi: {
-    idle: [{x:0,y:53,w:23,h:23,ax:11.5,ay:23.0},{x:25,y:53,w:23,h:23,ax:11.5,ay:23.0},{x:50,y:53,w:23,h:23,ax:11.5,ay:23.0}],
-    action: [{x:75,y:56,w:23,h:20,ax:11.5,ay:20.0},{x:100,y:53,w:23,h:23,ax:11.5,ay:23.0},{x:125,y:55,w:23,h:21,ax:11.5,ay:21.0},{x:150,y:56,w:23,h:20,ax:11.5,ay:20.0},{x:175,y:60,w:23,h:16,ax:11.5,ay:16.0},{x:200,y:56,w:23,h:20,ax:11.5,ay:20.0}],
-    die: [{x:225,y:60,w:23,h:16,ax:11.5,ay:16.0}],
+    idle: [{x:0,y:195,w:92,h:86,ax:46.0,ay:86.0}, {x:94,y:195,w:94,h:86,ax:47.0,ay:86.0}, {x:190,y:197,w:97,h:84,ax:48.5,ay:84.0}],
+    action: [{x:289,y:206,w:92,h:75,ax:46.0,ay:75.0}, {x:383,y:197,w:89,h:84,ax:44.5,ay:84.0}, {x:474,y:205,w:87,h:76,ax:43.5,ay:76.0}, {x:563,y:211,w:84,h:70,ax:42.0,ay:70.0}, {x:649,y:222,w:90,h:59,ax:45.0,ay:59.0}, {x:741,y:206,w:94,h:75,ax:47.0,ay:75.0}],
+    die: [{x:837,y:223,w:87,h:58,ax:43.5,ay:58.0}],
   },
   boss: {
-    idle: [{x:0,y:146,w:53,h:50,ax:26.5,ay:50.0},{x:55,y:146,w:52,h:50,ax:26.0,ay:50.0}],
-    lookL: [{x:109,y:146,w:52,h:50,ax:26.0,ay:50.0}],
-    lookR: [{x:163,y:145,w:52,h:51,ax:26.0,ay:51.0}],
-    hit: [{x:217,y:144,w:53,h:52,ax:26.5,ay:52.0}],
-    crawl: [{x:272,y:162,w:57,h:34,ax:28.5,ay:34.0},{x:331,y:159,w:57,h:37,ax:28.5,ay:37.0}],
-    fire: [{x:390,y:104,w:57,h:92,ax:28.5,ay:92.0},{x:449,y:110,w:57,h:86,ax:28.5,ay:86.0}],
-    angry: [{x:508,y:144,w:57,h:52,ax:28.5,ay:52.0}],
-    boom: [{x:567,y:78,w:57,h:118,ax:28.5,ay:118.0},{x:626,y:80,w:57,h:116,ax:28.5,ay:116.0},{x:685,y:144,w:58,h:52,ax:29.0,ay:52.0}],
+    idle: [{x:0,y:556,w:212,h:199,ax:106.0,ay:199.0}, {x:214,y:554,w:210,h:201,ax:105.0,ay:201.0}],
+    lookL: [{x:426,y:556,w:210,h:199,ax:105.0,ay:199.0}],
+    lookR: [{x:638,y:553,w:208,h:202,ax:104.0,ay:202.0}],
+    hit: [{x:848,y:547,w:212,h:208,ax:106.0,ay:208.0}],
+    crawl: [{x:1062,y:620,w:228,h:135,ax:114.0,ay:135.0}, {x:1292,y:607,w:230,h:148,ax:115.0,ay:148.0}],
+    fire: [{x:1524,y:387,w:230,h:368,ax:115.0,ay:368.0}, {x:1756,y:410,w:224,h:345,ax:112.0,ay:345.0}],
+    angry: [{x:1982,y:549,w:226,h:206,ax:113.0,ay:206.0}],
+    boom: [{x:2210,y:283,w:230,h:472,ax:115.0,ay:472.0}, {x:2442,y:292,w:230,h:463,ax:115.0,ay:463.0}, {x:2674,y:549,w:232,h:206,ax:116.0,ay:206.0}],
   },
 };
 
 // 敵1コマを中心そろえで描く。px=シートpx1個を何論理pxで出すか
-// （drawEnemy等・lowCtx世界は setTransform(0.5,..) で半分に戻るので px=2 が「シートpxそのまま」。
-//  drawTitle/drawLevelupはmainCtx直描きなので px を大きくして見やすくする）。
+// （世界パス・タイトル・レベルアップいずれもmainCtxへ直描きなので、pxがそのまま倍率になる。
+//  2026-09-25 シートを4倍解像度化したため、旧pxはすべて1/4にして見た目サイズを維持している：
+//  drawEnemySprite（世界パス既定）は旧2->0.5、drawTitleのタイトル飾りは旧4->1）。
 // flipX=trueで左右反転（進行方向むけの一部コマ専用）。
 function drawEnemySpriteScaled(frame, cx, cy, px, flipX) {
   if (!frame) return;
@@ -206,11 +205,14 @@ function drawEnemySpriteScaled(frame, cx, cy, px, flipX) {
   ctx.save();
   ctx.translate(cx, cy);
   if (flipX) ctx.scale(-1, 1);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(enemySpriteImg, frame.x, frame.y, frame.w, frame.h, -dw / 2, -dh / 2, dw, dh);
   ctx.restore();
 }
-function drawEnemySprite(frame, wx, wy, flipX) { drawEnemySpriteScaled(frame, wx, wy, 2, flipX); }
+// 2026-09-25 高解像度化：シートが4倍解像度になった分、pxを1/4にして見た目サイズを維持する
+// （旧px=2 -> 0.5）。
+function drawEnemySprite(frame, wx, wy, flipX) { drawEnemySpriteScaled(frame, wx, wy, 0.5, flipX); }
 
 // hashFrac(entId*k) を位相にしたコマ送り（既存の呼吸アニメと同じ流儀）。fps=1秒に何コマ進むか。
 function loopFrame(frames, entId, fps) {
@@ -1218,7 +1220,8 @@ function drawPlayer(cam) {
 
   if (window.__spritesReady && showSprite) {
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     // セル下端がプレイヤーの足元に来るよう、リングの中に立って見える位置へ合わせる
     const dx = sx - SPRITE_DRAW / 2;
     const dy = sy + drawR * 0.9 - SPRITE_DRAW;
@@ -1278,12 +1281,13 @@ function renderScene() {
 
   const cam = camera();
 
-  // 世界パス：低解像度レイヤー(1ドット=論理2px)に描き、以降 mainCtx へ最近傍で拡大する。
-  // 各描画関数の内部座標は無改造（setTransform(0.5,...)で吸収する）。
-  ctx = lowCtx;
-  ctx.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  // 世界パス：2026-09-25 高解像度化以前はここを低解像度レイヤー(lowCv, 1ドット=論理2px)に
+  // 描いてから最近傍で2倍拡大していたが、スプライトの粗さの原因だったため撤去し、
+  // render()が用意した mainCtx（dpr込み・フル解像度）へ直接描く。座標系は
+  // render()のsetTransform(dpr*scale,...)がそのまま効くので、各描画関数の内部座標（世界px＝
+  // 旧lowCtx座標と同じ意味）は無改造で使える。
+  ctx = mainCtx;
   ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, W, H);
   drawGround(cam);
   drawStrikes(cam);
   drawGems(cam, false); // 遠くのかけら（縮小・落ち着いた色）。敵の下でよい
@@ -1302,9 +1306,7 @@ function renderScene() {
   fxList = fxAlive.filter((fx) => FX_UNDER_PLAYER.has(fx.name)
     ? true
     : drawFxCombined(fx, fx.x - cam.x, fx.y - cam.y, clock - fx.t0));
-  ctx = mainCtx;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(lowCv, 0, 0, W / 2, H / 2, 0, 0, W, H);
+  // ctx は既に mainCtx（世界パスで lowCv を使わなくなったため、以降の中継drawImageは不要）。
 
   const hudBottom = drawHud();
   if (game.status === 'playing') drawSpeedButton();
@@ -1361,7 +1363,8 @@ function drawTitle() {
       ctx.fill();
       ctx.restore();
       const sp = ENEMY_SPRITES[d.key];
-      drawEnemySpriteScaled(loopFrame(sp.idle, d.x * 7 + d.y, 1.6), d.x, d.y, 4, false);
+      // 2026-09-25 高解像度化：シートが4倍解像度になった分、pxを1/4にして見た目サイズを維持する（旧4->1）。
+      drawEnemySpriteScaled(loopFrame(sp.idle, d.x * 7 + d.y, 1.6), d.x, d.y, 1, false);
     } else {
       const anim = creatureAnim('title-' + d.key + d.x, d.x, d.y, 0, 0);
       const col = ENEMY_COLOR[d.key];
@@ -1371,7 +1374,9 @@ function drawTitle() {
   // 主人公はゲーム中と同じスプライトの正面（行2）を、1ドット=論理4pxで大きく出す。
   // キャラはセルの12〜39行目にいるので、その中ほど（26行目）が y=430 に来るよう置く。
   const TITLE_DOT = 4;
-  const heroSize = SPRITE_CELL * TITLE_DOT;
+  // 2026-09-25 高解像度化：見た目サイズ（論理px）は変えない＝旧SPRITE_CELL(40)*TITLE_DOT(4)=160
+  // を維持する。src側のセル幅はSPRITE_CELLが自動的に新しい160になるので、dest側だけ固定する。
+  const heroSize = 160;
   ctx.save();
   ctx.fillStyle = 'rgba(60,50,30,.16)';
   ctx.beginPath();
@@ -1380,7 +1385,8 @@ function drawTitle() {
   ctx.restore();
   if (window.__spritesReady) {
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(
       spriteImg,
       0, 2 * SPRITE_CELL, SPRITE_CELL, SPRITE_CELL,
@@ -1450,9 +1456,11 @@ function drawLevelup() {
     // 主人公スプライトの正面（行2・列0＝待機コマ）を1ドット=2論理pxで出す
     // （2026-09-25: drawCreature の丸いスライムから差し替え。当初1.2pxだったのを
     //  船長指摘で整数の2pxへ）。
-    const dot = 2, size = SPRITE_CELL * dot;
+    // 2026-09-25 高解像度化：見た目サイズ（論理px）は変えない＝旧SPRITE_CELL(40)*dot(2)=80を維持する。
+    const size = 80;
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(spriteImg, 0, 2 * SPRITE_CELL, SPRITE_CELL, SPRITE_CELL,
       Math.round(W / 2 - size / 2), Math.round(heroY - size * 0.62), size, size);
     ctx.restore();
