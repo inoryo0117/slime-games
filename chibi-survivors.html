@@ -118,6 +118,8 @@ let clock = 0;         // 演出用の経過時間（wall-clock寄り。ポー�
 let fxList = [];        // { name, x, y, t0 }
 let playerHurtT = 999;  // 被弾直後の演出タイマー（大きい値=無効）
 let bossBanner = 0;
+let clearAt = null; // ボス撃破でstatus='clear'になったclock時刻（爆散演出を待ってからエンディングを出すため）
+const CLEAR_DELAY_MAX = 2.0; // 保険：爆散演出が何らかの理由で消えなくても最長これで進む
 let prevStatus = 'playing';
 let speedMul = 1; // 倍速トグル。値は 1 / 2 / 3 のみ（×1→×2→×3→×1）
 const BASE_SPEED = 1.3; // 基本速度（2026-09-24 バランス調整）。dtは変えず、1フレームあたり平均1.3回stepGameを呼ぶことで速さを出す
@@ -245,6 +247,20 @@ function drawFxCombined(fx, x, y, t) {
   let spriteAlive = false;
   if (fx.name === 'pop' && fx.enemyType) spriteAlive = drawEnemyDeath(fx.enemyType, x, y, t);
   return sparkleAlive || spriteAlive;
+}
+
+// ボスの爆散演出（fxList内の pop・enemyType==='oyamochi'）がまだ生きているか。
+// クリア画面はこれが消える（＝drawEnemyDeathのDEATH_DUR_BOSS秒が経つ）まで待つ。
+// 演出の長さの正本は drawEnemyDeath の DEATH_DUR_BOSS 1箇所のみ（ここでは秒数を複製しない）。
+function bossDeathFxAlive() {
+  return fxList.some((fx) => fx.name === 'pop' && fx.enemyType === 'oyamochi');
+}
+// クリア画面（drawEnd(true)）を出してよいか＝タップも有効にしてよいか。
+// 'clear'以外のstatusでは常にtrue（gameover等はこれまでどおり即座に操作可）。
+function clearScreenReady() {
+  if (!game || game.status !== 'clear') return true;
+  const elapsed = clearAt != null ? clock - clearAt : Infinity;
+  return !bossDeathFxAlive() || elapsed >= CLEAR_DELAY_MAX;
 }
 // スプライトの行 = atan2(vy, vx) を45度ずつに割ったセクタ番号。
 // 0=右 1=右下 2=下 3=左下 4=左 5=左上 6=上 7=右上（右上は gen_sheet4.py の生成絵、左上はその左右反転）。
@@ -910,6 +926,8 @@ function handleTap(x, y) {
     return true;
   }
   if (game.status === 'gameover' || game.status === 'clear') {
+    // ボスの爆散演出中は誤タップで「もういちど」等に反応しないよう無効化する
+    if (!clearScreenReady()) return true;
     if (y > H / 2 + 70 && y < H / 2 + 130) { startRun(); return true; }
     return true;
   }
@@ -958,7 +976,7 @@ function handleEvents(events) {
     else if (ev.type === 'levelup') fxList.push({ name: 'levelup', x: game.player.x, y: game.player.y, t0: clock });
     else if (ev.type === 'heal') fxList.push({ name: 'heal', x: game.player.x, y: game.player.y, t0: clock });
     else if (ev.type === 'boss') { fxList.push({ name: 'boss', x: game.player.x, y: game.player.y, t0: clock }); bossBanner = 2.4; }
-    else if (ev.type === 'clear') fxList.push({ name: 'clear', x: game.player.x, y: game.player.y, t0: clock });
+    else if (ev.type === 'clear') { fxList.push({ name: 'clear', x: game.player.x, y: game.player.y, t0: clock }); clearAt = clock; }
     // 'gameover' は status の変化で検知する（見た目はオーバーレイのみ）
   }
 }
@@ -1006,6 +1024,20 @@ function pickBossFrame(e, sp, dxToPlayer) {
   return { frame: loopFrame(sp.crawl, e.id, 5), flip };
 }
 
+// 足元の影（drawCreatureの影と同じ流儀・同じ比率）。スプライト側の焼き込み影は
+// 切り出し時に消してあるので（2026-09-25 船長指摘：クリーム背景で線に見えた）、
+// ここで敵ごとの当たり半径 r に比例させて描く。ワールド座標(wx,wy)に固定するため、
+// アイドルで本体が浮くコマでも影は地面に残ったまま本体だけ浮いて見える。
+function drawGroundShadow(wx, wy, r) {
+  ctx.save();
+  ctx.fillStyle = COL.shadow;
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + r * 0.55, r * 0.85, r * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawEnemy(e, cam) {
   const anim = creatureAnim('e' + e.id, e.x, e.y,
     (e.x - (entPrev.get('e' + e.id)?.x ?? e.x)) / Math.max(dtRef, 1 / 240),
@@ -1015,6 +1047,7 @@ function drawEnemy(e, cam) {
   const sx = e.x - cam.x, sy = e.y - cam.y;
   if (sp) {
     ctx.imageSmoothingEnabled = false;
+    drawGroundShadow(sx, sy, e.r);
     if (e.type === 'oyamochi') {
       const dxToPlayer = game.player.x - e.x;
       const { frame, flip } = pickBossFrame(e, sp, dxToPlayer);
@@ -1293,7 +1326,8 @@ function renderScene() {
 
   if (game.status === 'levelup') drawLevelup();
   else if (game.status === 'gameover') drawEnd(false);
-  else if (game.status === 'clear') drawEnd(true);
+  else if (game.status === 'clear' && clearScreenReady()) drawEnd(true);
+  // clearかつまだ演出中のときは何も上乗せしない＝盤面（自機・残った敵・爆散FX）を見せ続ける
 }
 
 function drawTitle() {
@@ -1319,6 +1353,13 @@ function drawTitle() {
   ];
   for (const d of titleDecor) {
     if (window.__enemySpritesReady) {
+      // 足元の影：主人公の足元影と同じ色・流儀の楕円（2026-09-25・焼き込み影を消した分）
+      ctx.save();
+      ctx.fillStyle = 'rgba(60,50,30,.16)';
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y + d.r * 0.75, d.r * 1.05, d.r * 0.32, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
       const sp = ENEMY_SPRITES[d.key];
       drawEnemySpriteScaled(loopFrame(sp.idle, d.x * 7 + d.y, 1.6), d.x, d.y, 4, false);
     } else {
