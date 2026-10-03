@@ -18,7 +18,7 @@ Free, bite-sized browser games. No download, no sign-up — they run right in yo
 ## つくり
 
 - 素のHTML5 Canvas 2D。ゲームエンジンもフレームワークも使っていません
-- 外部への通信なし。読み込みが終わればオフラインでも動きます
+- 外部への通信なし。読み込みが終わればオフラインでも動きます（※トップページは、遊んだ回数の集計のため Google Apps Script に通信します。送るのはゲーム名のみ。ゲーム本体は外部通信なしで、集計に失敗しても遊べます）
 - タッチとマウスの両方に対応
 - ゲームロジックは描画から切り離してあり（`survivors-logic.js` / `td-logic.js`）、自動プレイのボットを回して挙動とバランスを検証しています
 
