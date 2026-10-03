@@ -30,9 +30,9 @@
   header h1 { font-family:var(--font-head); font-size:28px; line-height:1.3; }
   header p { color:var(--sub); font-size:14px; margin-top:8px; }
   .tags { display:flex; flex-wrap:wrap; gap:8px; margin:24px 0; }
-  .tags button { font:inherit; font-family:var(--font-head); font-size:19px; font-weight:700; line-height:24px; padding:8px 16px;
+  .tags button { font:inherit; font-family:var(--font-body); font-size:15px; font-weight:500; line-height:20px; height:36px; padding:0 16px;
     background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:999px; cursor:pointer; }
-  .tags button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .tags button[aria-pressed="true"] { background:var(--text); border-color:var(--text); color:#fff; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:24px; }
   .card { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden;
     text-decoration:none; box-shadow:0 1px 2px rgba(35,48,63,.06); }
@@ -84,20 +84,20 @@ const SITE = {
 };
 
 /* 新作を足すには、下の1件をコピーして GAMES の先頭か末尾に貼り、書き換える。
-   並びは date の新しい順に自動で決まる。
+   並びは「サイト内ゲーム→外部リンク」の順で、それぞれ date の新しい順に自動で決まる。
    { id: "半角英数とハイフン（URLに使う・重複不可）",
      title: "タイトル", date: "YYYY-MM-DD", tags: ["タグ", ...], catch: "ひとこと",
      img: "img/games/<id>.webp",            // サムネ 16:10（1280x800 など）
      play: "xxx.html" }                     // このサイト内のHTML → プレイ画面で開く
    外部サイトなら play の代わりに  url: "https://..."  と書く（別タブで開く）。 */
 const GAMES = [
-  { id:"slime-survivors", title:"スライム・サバイバーズ", date:"2026-09-24", tags:["アクション","8分1ラン"],
+  { id:"slime-survivors", title:"スライム・サバイバーズ", date:"2026-09-24", tags:["アクション"],
     catch:"見下ろし視点でひたすら逃げまわる自動攻撃サバイバー。ゆび1本で動かすだけ、8分間生き延びろ。",
     img:"img/games/slime-survivors.webp", play:"slime-survivors.html" },
-  { id:"chibi-survivors", title:"ちびキャラ・サバイバーズ", date:"2026-09-24", tags:["アクション","8分1ラン"],
+  { id:"chibi-survivors", title:"ちびキャラ・サバイバーズ", date:"2026-09-24", tags:["アクション"],
     catch:"主人公を8方向に歩くドット絵のちびキャラにした版。ルールは同じ、ゆび1本で8分間。",
     img:"img/games/chibi-survivors.webp", play:"chibi-survivors.html" },
-  { id:"slime-tower", title:"スライム防衛隊タワーディフェンス", date:"2026-09-24", tags:["タワーディフェンス","全4ステージ"],
+  { id:"slime-tower", title:"スライム防衛隊タワーディフェンス", date:"2026-09-24", tags:["タワーディフェンス"],
     catch:"道の脇のマスをタップしてタワーを建設。乗り物・戦車・飛行機を迎え撃ち、全4面を守りきれ。",
     img:"img/games/slime-tower.webp", play:"slime-tower.html" },
   { id:"slime-basket", title:"スライム・イン・かご", date:"2026-09-24", tags:["スコアアタック"],
@@ -124,7 +124,7 @@ function el(tag, attrs, ...kids) {
 function renderList() {
   document.title = SITE.name;
   const tags = [...new Set(GAMES.flatMap(g => g.tags))];
-  const sorted = [...GAMES].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...GAMES].sort((a, b) => (!!a.url - !!b.url) || b.date.localeCompare(a.date));
 
   const tagBar = el("div", { class:"tags", role:"group", "aria-label":"タグで絞り込む" });
   ["", ...tags].forEach(t => {
