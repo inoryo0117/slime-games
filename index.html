@@ -4,80 +4,187 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0e1a24">
+<meta name="theme-color" content="#fffaf2">
+<link rel="icon" href="data:,">
 <title>スライムのゲーム置き場</title>
 <meta name="description" content="ダウンロード不要・登録不要。スマホでもPCでも、開いたらすぐ遊べる短時間のブラウザゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="スライムのゲーム置き場">
+<meta property="og:description" content="ダウンロード不要・登録不要。スマホでもPCでも、開いたらすぐ遊べる短時間のブラウザゲーム。">
+<meta property="og:image" content="https://inoryo0117.github.io/slime-games/img/ogp.png">
+<meta property="og:url" content="https://inoryo0117.github.io/slime-games/">
+<meta name="twitter:card" content="summary_large_image">
 <style>
+  :root {
+    --bg:#fffaf2; --text:#23303f; --sub:#5d6b7c; --line:#e6dccb; --accent:#3f9d68; --card:#fff;
+    --font-head:"Hiragino Maru Gothic ProN","M PLUS Rounded 1c",system-ui;
+    --font-body:"Hiragino Sans","Yu Gothic",system-ui;
+  }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html { min-height:100%; }
-  body {
-    min-height:100vh; background:linear-gradient(170deg,#132033 0%,#0d1a26 55%,#0a1520 100%); background-attachment:fixed;
-    color:#e7f2f8; font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
-    padding:34px 20px calc(40px + env(safe-area-inset-bottom));
-    -webkit-user-select:none; user-select:none;
-  }
-  h1 { font-size:26px; text-align:center; letter-spacing:.04em; }
-  .sub { text-align:center; color:#7f9db0; font-size:13px; margin:8px 0 6px; }
-  .sub.en { font-size:11.5px; color:#63808f; margin-bottom:28px; }
-  .card {
-    display:block; text-decoration:none; color:inherit;
-    background:rgba(255,255,255,.07); border:1px solid rgba(150,200,230,.18);
-    border-radius:18px; padding:18px 18px 16px; margin:0 auto 16px; max-width:430px;
-    transition:transform .12s ease, background .12s ease;
-  }
-  .card:active { transform:scale(.98); background:rgba(255,255,255,.13); }
-  .row { display:flex; align-items:center; gap:14px; }
-  .emoji { font-size:34px; line-height:1; width:44px; text-align:center; }
-  .name { font-size:19px; font-weight:700; }
-  .desc { color:#9fb9c9; font-size:13px; margin-top:5px; line-height:1.5; }
-  .tag { display:inline-block; margin-top:10px; font-size:11px; color:#0d1a26;
-         background:#7fd4a8; border-radius:99px; padding:3px 10px; font-weight:700; }
-  .tag.b { background:#ffd35f; } .tag.c { background:#ff9ecb; }
-  .foot { text-align:center; color:#5d7686; font-size:11px; margin-top:26px; line-height:1.8; }
-  .foot a { color:#7f9db0; }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-body); line-height:1.6; }
+  a { color:inherit; }
+
+  /* 一覧 */
+  .wrap { max-width:1200px; margin:0 auto; padding:calc(32px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); }
+  header h1 { font-family:var(--font-head); font-size:28px; line-height:1.3; }
+  header p { color:var(--sub); font-size:14px; margin-top:8px; }
+  .tags { display:flex; flex-wrap:wrap; gap:8px; margin:24px 0; }
+  .tags button { font:inherit; font-family:var(--font-head); font-size:19px; font-weight:700; line-height:24px; padding:8px 16px;
+    background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:999px; cursor:pointer; }
+  .tags button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:24px; }
+  .card { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    text-decoration:none; box-shadow:0 1px 2px rgba(35,48,63,.06); }
+  .thumb { aspect-ratio:16/10; overflow:hidden; background:var(--line); }
+  .thumb img { display:block; width:100%; height:100%; object-fit:cover; transition:transform .15s ease; }
+  .card:hover .thumb img, .card:focus-visible .thumb img { transform:translateY(-4px) scale(1.03); }
+  .card:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
+  .body { padding:16px; display:flex; flex-direction:column; flex:1; }
+  .body h2 { font-family:var(--font-head); font-size:18px; line-height:1.4; }
+  .body .catch { color:var(--sub); font-size:14px; margin-top:8px; flex:1; }
+  .meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px; }
+  .meta .t { font-size:12px; color:var(--sub); border:1px solid var(--line); border-radius:999px; padding:0 8px; }
+  .meta .ext { font-size:12px; color:var(--text); background:var(--line); border-radius:4px; padding:0 8px; }
+  .play { margin-left:auto; font-family:var(--font-head); font-size:19px; font-weight:700; line-height:24px; background:var(--accent); color:#fff; border-radius:8px; padding:8px 16px; }
+  footer { margin-top:48px; padding-top:24px; border-top:1px solid var(--line); color:var(--sub); font-size:12px; line-height:2; }
+
+  /* プレイ画面 */
+  .player { position:fixed; inset:0; display:flex; flex-direction:column; height:100dvh; background:#000; }
+  .bar { flex:none; display:flex; align-items:center; gap:16px; height:calc(40px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(8px + env(safe-area-inset-right)) 0 calc(8px + env(safe-area-inset-left));
+    background:var(--bg); border-bottom:1px solid var(--line); }
+  .bar a, .bar button { font:inherit; font-size:14px; color:var(--text); background:none; border:0; padding:8px; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .bar .title { flex:1; text-align:center; font-family:var(--font-head); font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .frame { flex:1; min-height:0; }
+  .frame iframe { display:block; width:100%; height:100%; border:0; background:var(--bg); }
 </style>
 </head>
 <body>
-  <h1>スライムのゲーム置き場</h1>
-  <p class="sub">ダウンロードも登録もなし。開いたらすぐ遊べます</p>
-  <p class="sub en">Free browser games. No download, no sign-up — they run right in your browser, on phone or PC.</p>
+<div id="app"></div>
+<noscript>
+  <div class="wrap">
+    <header><h1>スライムのゲーム置き場</h1><p>JavaScript を有効にすると一覧が表示されます。直接のリンクはこちら。</p></header>
+    <ul style="margin-top:24px;padding-left:24px">
+      <li><a href="slime-survivors.html">スライム・サバイバーズ</a></li>
+      <li><a href="chibi-survivors.html">ちびキャラ・サバイバーズ</a></li>
+      <li><a href="slime-tower.html">スライム防衛隊タワーディフェンス</a></li>
+      <li><a href="slime-basket.html">スライム・イン・かご</a></li>
+      <li><a href="https://inoryo0117.github.io/piano-game/">おとふる（外部リンク）</a></li>
+    </ul>
+  </div>
+</noscript>
 
-  <a class="card" href="slime-survivors.html">
-    <div class="row"><div class="emoji">🌼</div><div>
-      <div class="name">スライム・サバイバーズ</div>
-      <div class="desc">見下ろし視点でひたすら逃げまわる自動攻撃サバイバー。ゆび1本で動かすだけ、しゃぼんやわっかが勝手に敵を倒す。8分間生き延びろ。</div>
-      <span class="tag c">8分1ラン</span>
-    </div></div>
-  </a>
+<script>
+/* ================================================================
+   編集するのはここだけ
+   ================================================================ */
+const SITE = {
+  name: "スライムのゲーム置き場",
+  lead: "ダウンロードも登録もなし。開いたらすぐ遊べます。",
+};
 
-  <a class="card" href="chibi-survivors.html">
-    <div class="row"><div class="emoji">🗡️</div><div>
-      <div class="name">ちびキャラ・サバイバーズ</div>
-      <div class="desc">スライム・サバイバーズの主人公を、8方向に歩くドット絵のちびキャラにした版。ルールは同じ、ゆび1本で8分間。</div>
-      <span class="tag c">8分1ラン</span>
-    </div></div>
-  </a>
+/* 新作を足すには、下の1件をコピーして GAMES の先頭か末尾に貼り、書き換える。
+   並びは date の新しい順に自動で決まる。
+   { id: "半角英数とハイフン（URLに使う・重複不可）",
+     title: "タイトル", date: "YYYY-MM-DD", tags: ["タグ", ...], catch: "ひとこと",
+     img: "img/games/<id>.webp",            // サムネ 16:10（1280x800 など）
+     play: "xxx.html" }                     // このサイト内のHTML → プレイ画面で開く
+   外部サイトなら play の代わりに  url: "https://..."  と書く（別タブで開く）。 */
+const GAMES = [
+  { id:"slime-survivors", title:"スライム・サバイバーズ", date:"2026-09-24", tags:["アクション","8分1ラン"],
+    catch:"見下ろし視点でひたすら逃げまわる自動攻撃サバイバー。ゆび1本で動かすだけ、8分間生き延びろ。",
+    img:"img/games/slime-survivors.webp", play:"slime-survivors.html" },
+  { id:"chibi-survivors", title:"ちびキャラ・サバイバーズ", date:"2026-09-24", tags:["アクション","8分1ラン"],
+    catch:"主人公を8方向に歩くドット絵のちびキャラにした版。ルールは同じ、ゆび1本で8分間。",
+    img:"img/games/chibi-survivors.webp", play:"chibi-survivors.html" },
+  { id:"slime-tower", title:"スライム防衛隊タワーディフェンス", date:"2026-09-24", tags:["タワーディフェンス","全4ステージ"],
+    catch:"道の脇のマスをタップしてタワーを建設。乗り物・戦車・飛行機を迎え撃ち、全4面を守りきれ。",
+    img:"img/games/slime-tower.webp", play:"slime-tower.html" },
+  { id:"slime-basket", title:"スライム・イン・かご", date:"2026-09-24", tags:["スコアアタック"],
+    catch:"動くかごに何匹入れられるか。3回落としたら終わり。ベスト更新を狙う短時間版。",
+    img:"img/games/slime-basket.webp", play:"slime-basket.html" },
+  { id:"piano-game", title:"おとふる（ピアノ音ゲー）", date:"2026-09-26", tags:["音ゲー"],
+    catch:"iPad と本物のピアノで遊ぶ音ゲー。降ってくる音を弾いていく。",
+    img:"img/games/piano-game.webp", url:"https://inoryo0117.github.io/piano-game/" },
+];
+/* ================================================================ */
 
-  <a class="card" href="slime-tower.html">
-    <div class="row"><div class="emoji">🗼</div><div>
-      <div class="name">スライム防衛隊タワーディフェンス</div>
-      <div class="desc">道の脇のマスをタップしてタワーを建設。侵入する乗り物・戦車・飛行機を迎え撃ち、全4面の防衛をやり遂げろ。</div>
-      <span class="tag">全4ステージ</span>
-    </div></div>
-  </a>
+const app = document.getElementById("app");
+let activeTag = "";
 
-  <a class="card" href="slime-basket.html">
-    <div class="row"><div class="emoji">🟢</div><div>
-      <div class="name">スライム・イン・かご</div>
-      <div class="desc">動くかごに何匹入れられるか。3回落としたら終わり。ベスト更新を狙う短時間版。</div>
-      <span class="tag b">スコアアタック</span>
-    </div></div>
-  </a>
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in (attrs || {})) {
+    if (k === "class") e.className = attrs[k]; else e.setAttribute(k, attrs[k]);
+  }
+  kids.forEach(c => e.append(c));
+  return e;
+}
 
-  <p class="foot">
-    ホーム画面に追加すると全画面になります<br>
-    外部通信なし・オフラインでも動きます<br>
-    タワーディフェンスの画像素材は <a href="https://kenney.nl/assets/tower-defense-top-down">Kenney</a>（CC0）
-  </p>
+function renderList() {
+  document.title = SITE.name;
+  const tags = [...new Set(GAMES.flatMap(g => g.tags))];
+  const sorted = [...GAMES].sort((a, b) => b.date.localeCompare(a.date));
+
+  const tagBar = el("div", { class:"tags", role:"group", "aria-label":"タグで絞り込む" });
+  ["", ...tags].forEach(t => {
+    const b = el("button", { type:"button", "aria-pressed": String(t === activeTag) }, t || "すべて");
+    b.onclick = () => { activeTag = t; renderList(); };
+    tagBar.append(b);
+  });
+
+  const grid = el("div", { class:"grid" });
+  sorted.filter(g => !activeTag || g.tags.includes(activeTag)).forEach(g => {
+    const external = !!g.url;
+    const a = el("a", { class:"card", href: external ? g.url : "#/play/" + g.id });
+    if (external) { a.target = "_blank"; a.rel = "noopener"; }
+    const img = el("img", { src:g.img, alt:"", loading:"lazy", width:"1280", height:"800" });
+    const meta = el("div", { class:"meta" });
+    g.tags.forEach(t => meta.append(el("span", { class:"t" }, t)));
+    if (external) meta.append(el("span", { class:"ext" }, "外部サイト"));
+    meta.append(el("span", { class:"play" }, "あそぶ"));
+    a.append(
+      el("div", { class:"thumb" }, img),
+      el("div", { class:"body" }, el("h2", null, g.title), el("p", { class:"catch" }, g.catch), meta)
+    );
+    grid.append(a);
+  });
+
+  const credit = el("footer");
+  credit.innerHTML = 'ホーム画面に追加すると全画面になります<br>外部通信なし・オフラインでも動きます（「外部サイト」と書かれたゲームを除く）<br>' +
+    'タワーディフェンスの画像素材は <a href="https://kenney.nl/assets/tower-defense-top-down">Kenney</a>（CC0）';
+
+  app.replaceChildren(el("div", { class:"wrap" },
+    el("header", null, el("h1", null, SITE.name), el("p", null, SITE.lead)), tagBar, grid, credit));
+}
+
+function renderPlay(id) {
+  const g = GAMES.find(x => x.id === id && x.play);
+  if (!g) { location.replace("#/"); return; }
+  document.title = g.title + " - " + SITE.name;
+
+  const back = el("a", { href:"#/" }, "← 一覧へ戻る");
+  const bar = el("div", { class:"bar" }, back, el("span", { class:"title" }, g.title));
+  const frame = el("div", { class:"frame" });
+  const iframe = el("iframe", { src:g.play, title:g.title, allow:"fullscreen; autoplay" });
+  iframe.allowFullscreen = true;
+  iframe.addEventListener("load", () => { try { iframe.contentWindow.focus(); } catch (e) {} });
+  frame.append(iframe);
+  if (document.fullscreenEnabled) {
+    const fs = el("button", { type:"button" }, "全画面");
+    fs.onclick = () => { (document.fullscreenElement ? document.exitFullscreen() : frame.requestFullscreen()).catch(() => {}); };
+    bar.append(fs);
+  }
+  app.replaceChildren(el("div", { class:"player" }, bar, frame));
+}
+
+function route() {
+  const m = location.hash.match(/^#\/play\/([\w-]+)$/);
+  if (m) renderPlay(m[1]); else renderList();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
 </body>
 </html>
