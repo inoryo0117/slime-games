@@ -46,6 +46,7 @@
   .meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px; }
   .meta .t { font-size:12px; color:var(--sub); border:1px solid var(--line); border-radius:999px; padding:0 8px; }
   .meta .ext { font-size:12px; color:var(--text); background:var(--line); border-radius:4px; padding:0 8px; }
+  .meta .cnt { font-size:13px; color:#5d6b7c; }
   .play { margin-left:auto; font-family:var(--font-head); font-size:19px; font-weight:700; line-height:24px; background:var(--accent); color:#fff; border-radius:8px; padding:8px 16px; }
   footer { margin-top:48px; padding-top:24px; border-top:1px solid var(--line); color:var(--sub); font-size:12px; line-height:2; }
 
@@ -78,6 +79,10 @@
 /* ================================================================
    編集するのはここだけ
    ================================================================ */
+/* 遊ばれた回数を数えたいときだけ、Google Apps Script のウェブアプリの URL（…/exec）をここに貼る。
+   手順は counter.gs の先頭コメントを参照。空のままなら外部への通信は一切しない。 */
+var COUNTER_URL = "";
+
 const SITE = {
   name: "スライムのゲーム置き場",
   lead: "ダウンロードも登録もなし。開いたらすぐ遊べます。",
@@ -110,6 +115,24 @@ const GAMES = [
 /* ================================================================ */
 
 const app = document.getElementById("app");
+
+/* ---- 遊んだ回数（COUNTER_URL が空なら何もしない）---- */
+let countsPromise = null;
+function fetchCounts() {
+  if (!COUNTER_URL) return Promise.resolve(null);
+  if (!countsPromise) {
+    countsPromise = fetch(COUNTER_URL, { credentials:"omit", redirect:"follow" })
+      .then(r => r.ok ? r.json() : null).catch(() => null);
+  }
+  return countsPromise;
+}
+function sendHit(id) {
+  if (!COUNTER_URL) return;
+  const key = "hit:" + id;
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch (e) { return; }
+  fetch(COUNTER_URL + (COUNTER_URL.includes("?") ? "&" : "?") + "hit=" + encodeURIComponent(id),
+    { credentials:"omit", redirect:"follow" }).then(r => r.text()).catch(() => {});
+}
 let activeTag = "";
 
 function el(tag, attrs, ...kids) {
@@ -142,6 +165,7 @@ function renderList() {
     const meta = el("div", { class:"meta" });
     g.tags.forEach(t => meta.append(el("span", { class:"t" }, t)));
     if (external) meta.append(el("span", { class:"ext" }, "外部サイト"));
+    if (!external && COUNTER_URL) meta.append(el("span", { class:"cnt", "data-id":g.id }));
     meta.append(el("span", { class:"play" }, "あそぶ"));
     a.append(
       el("div", { class:"thumb" }, img),
@@ -151,17 +175,28 @@ function renderList() {
   });
 
   const credit = el("footer");
-  credit.innerHTML = 'ホーム画面に追加すると全画面になります<br>外部通信なし・オフラインでも動きます（「外部サイト」と書かれたゲームを除く）<br>' +
+  credit.innerHTML = 'ホーム画面に追加すると全画面になります<br>' +
+    (COUNTER_URL ? '遊んだ回数を数えるため Google に通信します（ゲーム名だけ・個人情報は送りません）。オフラインでもゲームは遊べます'
+                 : '外部通信なし・オフラインでも動きます（「外部サイト」と書かれたゲームを除く）') + '<br>' +
     'タワーディフェンスの画像素材は <a href="https://kenney.nl/assets/tower-defense-top-down">Kenney</a>（CC0）';
 
   app.replaceChildren(el("div", { class:"wrap" },
     el("header", null, el("h1", null, SITE.name), el("p", null, SITE.lead)), tagBar, grid, credit));
+
+  if (COUNTER_URL) fetchCounts().then(c => {
+    if (!c || typeof c !== "object") return;
+    grid.querySelectorAll(".cnt").forEach(n => {
+      const v = Number(c[n.dataset.id]);
+      if (Number.isFinite(v) && v > 0) n.textContent = v.toLocaleString() + "回あそばれた";
+    });
+  });
 }
 
 function renderPlay(id) {
   const g = GAMES.find(x => x.id === id && x.play);
   if (!g) { location.replace("#/"); return; }
   document.title = g.title + " - " + SITE.name;
+  sendHit(g.id);
 
   const back = el("a", { href:"#/" }, "← 一覧へ戻る");
   const bar = el("div", { class:"bar" }, back, el("span", { class:"title" }, g.title));
